@@ -4,6 +4,7 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        System.out.println("Welcome to SupremeASM v0.1a");
         System.out.println("Write the SupremeASM Machine code to execute:");
         Scanner userInput = new Scanner(System.in);
         String input = userInput.nextLine();
