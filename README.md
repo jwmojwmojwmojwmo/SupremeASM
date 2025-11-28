@@ -41,3 +41,4 @@ r0 recieves return values for all instructions. Most instructions return either 
 
 ### Print "Hello World!":
 f1eeffff0000000d 2009ffff 01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000077 07eeffff00000072 08eeffff00000064 1190ffff 1291ffff 1392ffff 1393ffff 1494ffff 1595ffff 1696ffff 1497ffff 1798ffff 1399ffff 189affff 01eeffff00000021 119bffff 01eeffff0000000a1 19cffff e190ffff e191ffff e192ffff e193ffff e194ffff e195ffff e196ffff e197ffff e198ffff e199ffff e19affff e19bffff e19cffff ffffffff
+# SupremeASM
