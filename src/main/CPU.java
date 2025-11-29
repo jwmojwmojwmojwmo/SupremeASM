@@ -5,10 +5,6 @@ public class CPU {
     private final PC pc;
     private static MainMemory mem;
     private boolean isRunning;
-    // memStart and memEnd are inclusive, so memory can be at memStart and memEnd,
-    // just not past it
-    private int memStart;
-    private int memEnd;
     // insEnd is EXCLUSIVE. instructions go to insEnd - 1
     private int insEnd;
 
@@ -17,8 +13,6 @@ public class CPU {
                 new Register(), new Register(), new Register(), new Register(), new Register() };
         pc = new PC();
         mem = MainMemory.getInstance();
-        memStart = -1;
-        memEnd = -1;
     }
 
     public int load(byte[] instructions) {
@@ -32,17 +26,18 @@ public class CPU {
             }
         }
         pc.write(insStart);
+        pc.inc();
         return insStart;
     }
 
     public void run() {
         int firstIns;
         isRunning = true;
-        while (pc.read() < insEnd) {
-            firstIns = mem.read(pc.read());
+        while (pc.read() <= insEnd) {
+            firstIns = mem.read(pc.read() - 1);
             try {
                 if (((firstIns >> 16) & 0xFF) == 0xEE) {
-                    regs[0].write(decodeAndExecute(firstIns, mem.read(pc.inc()))); // r0 is default return register
+                    regs[0].write(decodeAndExecute(firstIns, mem.read(pc.inc() - 1))); // r0 is default return register
                 } else {
                     regs[0].write(decodeAndExecute(firstIns));
                 }
@@ -64,11 +59,24 @@ public class CPU {
         int insNum0 = ((instruction >> 24) & 0xF);
         int insNum1 = ((instruction >> 20) & 0xF);
         int insNum2 = ((instruction >> 16) & 0xF);
+        int insNum3 = ((instruction >> 12) & 0xF);
+        int insImm = instruction & 0xFFFF;
         switch (insOp) {
             case 0:
-                return loadMemory(insNum1, insNum0, insNum2);
+                if (insNum0 == 0) {
+                    return loadMemory(insNum2, insNum1, insNum3);
+                }
+                if (insNum0 == 1) {
+                    return loadMemoryIndexed(insNum2, insNum1, insNum3);
+                }
+                return -1;
             case 1:
-                return storeMemory(insNum2, insNum0, insNum1);
+                if (insNum0 == 0) {
+                    return storeMemory(insNum3, insNum1, insNum2);
+                }
+                if (insNum0 == 1) {
+                    return storeMemoryIndexed(insNum3, insNum1, insNum2);
+                }
             case 2:
                 switch (insNum0) {
                     case 0:
@@ -83,8 +91,19 @@ public class CPU {
                         return not(insNum2);
                     case 5:
                         return and(insNum1, insNum2);
+                    default:
+                        return -1;
                 }
-
+            case 0xA:
+                if (insNum0 == 0) {
+                    return indirectJump((short) insImm);
+                }
+                if (insNum0 == 1) {
+                    return ifEqualIndirectJump((short) insImm, insNum1);
+                }
+                if (insNum0 == 2) {
+                    return ifGreaterIndirectJump((short) insImm, insNum1, insNum2);
+                }
             case 0xE:
                 if (insNum0 == 0) {
                     if (insNum1 == 0) {
@@ -131,21 +150,13 @@ public class CPU {
                 return loadValue(secondIns, insNum0);
             case 0xF:
                 if (insNum0 == 1) {
-                    return allocateMemory(secondIns);
-                } else if (insNum0 == 2) {
-                    return deallocateMemory(secondIns);
+                    return mem.requestMemoryBlock(secondIns);
                 }
+            case 0xA:
+                return directJump(secondIns);
             default:
                 return -1;
         }
-    }
-
-    private int allocateMemory(int size) {
-        memStart = mem.requestMemoryBlock(size);
-        if (memStart != -1) {
-            memEnd = mem.read(memStart - 1) + memStart; // only time you are allowed to access past the memStart
-        }
-        return memStart;
     }
 
     private int deallocateMemory(int register) {
@@ -162,19 +173,27 @@ public class CPU {
     // ld offset(reg1), reg2
     private int loadMemory(int offset, int reg1, int reg2) {
         int address = regs[reg1].read() + offset;
-        if (address < memStart || address > memEnd) {
-            return -1; // undefined behavior
-        }
-        regs[reg2].write(address);
+        regs[reg2].write(mem.read(address));
+        return 1;
+    }
+
+    // ld (reg1 + rego), reg2
+    private int loadMemoryIndexed(int rego, int reg1, int reg2) {
+        int address = regs[reg1].read() + regs[rego].read();
+        regs[reg2].write(mem.read(address));
         return 1;
     }
 
     // st reg1, offset(reg2)
     private int storeMemory(int offset, int reg1, int reg2) {
         int address = regs[reg2].read() + offset;
-        if (address < memStart || address > memEnd) {
-            return -1; // undefined behavior
-        }
+        mem.write(address, regs[reg1].read());
+        return 1;
+    }
+
+    // st reg1, (reg2 + rego)
+    private int storeMemoryIndexed(int rego, int reg1, int reg2) {
+        int address = regs[reg2].read() + regs[rego].read();
         mem.write(address, regs[reg1].read());
         return 1;
     }
@@ -215,6 +234,34 @@ public class CPU {
         return 1;
     }
 
+    // j $o
+    private int indirectJump(short offset) {
+        pc.write(pc.read() + offset);
+        return 1;
+    }
+
+    // j $o if reg == 0
+    private int ifEqualIndirectJump(short offset, int register) {
+        if (regs[register].read() == 0) {
+            pc.write(pc.read() + offset);
+        }
+        return 1;
+    }
+
+    // j $o if reg1 > reg2
+    private int ifGreaterIndirectJump(short offset, int reg1, int reg2) {
+        if (regs[reg1].read() > regs[reg2].read()) {
+            pc.write(pc.read() + offset);
+        }
+        return 1;
+    }
+
+    // j address
+    private int directJump(int address) {
+        pc.write(address);
+        return 1;
+    }
+
     private int logRegister(int register) {
         System.out.print(regs[register].read());
         return 1;
@@ -228,36 +275,23 @@ public class CPU {
 
     private int logMemory(int offset, int register) {
         int address = regs[register].read() + offset;
-        if (address < memStart || address > memEnd) {
-            return -1; // undefined behavior
-        }
         System.out.print(mem.read(address));
         return 1;
     }
 
     private int logFormatMemory(int offset, int register) {
         int address = regs[register].read() + offset;
-        if (address < memStart || address > memEnd) {
-            return -1; // undefined behavior
-        }
         char c = (char) (mem.read(address) & 0xFF);
         System.out.print(c);
         return 1;
     }
 
     private int dump() {
-        System.out.println("Registers:");
+        System.out.println("\nRegisters:");
         for (int i = 0; i < regs.length; i++) {
             System.out.println(i + ": " + regs[i].read());
         }
         System.out.println("PC: " + pc.read());
-        return 1;
-    }
-
-    private int validateCPU() {
-        if (memStart == -1 || memEnd == -1 || regs.length != 10) {
-            return -1;
-        }
         return 1;
     }
 }

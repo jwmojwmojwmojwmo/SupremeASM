@@ -16,18 +16,24 @@ public class Main {
         // 0: load instruction
         // 1: store
         // 2: reg mov/arithmetic instructions
+        // a: control flow
         // e: log instruction
         // f: system instruction
         // vvvvvvvv -> r[r] = 0ree----vvvvvvvv
-        // m[r[r] + o] -> r[s] = 0ros----
-        // r[r] -> m[r[s] + o] = 1rso----
+        // m[r[r] + o] -> r[s] = 00ros---
+        // m[r[r] + r[o]] -> r[s] = 01ros---
+        // r[r] -> m[r[s] + o] = 10rso---
+        // r[r] -> m[r[s] + r[o]] = 11rso---
         // r[r] -> r[s] = 20rs----
         // r[r] + 1 -> r[r] = 210r----
         // r[r] - 1 -> r[r] = 220r----
         // r[r] + r[s] -> r[s] = 23rs----
         // ~r[r] -> r[r] = 240r----
         // r[r] & r[s] -> r[s] = 25rs----
-        //
+        // pc + o -> pc = a00-oooo
+        // if r[r] == 0, then pc + o -> pc = a1r-oooo
+        // if r[r] > r[s], then pc + o -> pc = a2rsoooo
+        // vvvvvvvv -> pc = afee----vvvvvvvv
         // print(r[r]) = e00r----
         // print(m[r[r] + o]) = e0ro----
         // printWithFormatting(r[r]) ie ascii = e10r----
@@ -58,7 +64,7 @@ public class Main {
             System.out.println(e);
             System.out.println("invalid code or a sysfault was triggered (probably the first one though)");
         }
-        System.out.println("\nExecution completed");
+        System.out.println("\n\nExecution completed");
         System.exit(0);
     }
 }
