@@ -9,6 +9,7 @@ public class CPU {
     // just not past it
     private int memStart;
     private int memEnd;
+    // insEnd is EXCLUSIVE. instructions go to insEnd - 1
     private int insEnd;
 
     public CPU() {
@@ -37,12 +38,16 @@ public class CPU {
     public void run() {
         int firstIns;
         isRunning = true;
-        while (pc.read() <= insEnd) {
+        while (pc.read() < insEnd) {
             firstIns = mem.read(pc.read());
-            if (((firstIns >> 16) & 0xFF) == 0xEE) {
-                regs[0].write(decodeAndExecute(firstIns, mem.read(pc.inc()))); // r0 is default return register
-            } else {
-                regs[0].write(decodeAndExecute(firstIns));
+            try {
+                if (((firstIns >> 16) & 0xFF) == 0xEE) {
+                    regs[0].write(decodeAndExecute(firstIns, mem.read(pc.inc()))); // r0 is default return register
+                } else {
+                    regs[0].write(decodeAndExecute(firstIns));
+                }
+            } catch (Exception e) {
+                regs[0].write(-1);
             }
             if (regs[0].read() == -1) {
                 System.out.println("segfault triggered at instruction @" + pc.read());
@@ -65,7 +70,21 @@ public class CPU {
             case 1:
                 return storeMemory(insNum2, insNum0, insNum1);
             case 2:
-                return move(insNum1, insNum2);
+                switch (insNum0) {
+                    case 0:
+                        return move(insNum1, insNum2);
+                    case 1:
+                        return increment(insNum2);
+                    case 2:
+                        return decrement(insNum2);
+                    case 3:
+                        return add(insNum1, insNum2);
+                    case 4:
+                        return not(insNum2);
+                    case 5:
+                        return and(insNum1, insNum2);
+                }
+
             case 0xE:
                 if (insNum0 == 0) {
                     if (insNum1 == 0) {
@@ -130,18 +149,12 @@ public class CPU {
     }
 
     private int deallocateMemory(int register) {
-        if (register > 9 || register < 0) {
-            return -1; // undefined behavior
-        }
         mem.freeMemoryBlock(regs[register].read());
         return 1;
     }
 
     // ld $v, reg1
     private int loadValue(int value, int register) {
-        if (register > 9 || register < 0) {
-            return -1; // undefined behavior
-        }
         regs[register].write(value);
         return 1;
     }
@@ -149,7 +162,7 @@ public class CPU {
     // ld offset(reg1), reg2
     private int loadMemory(int offset, int reg1, int reg2) {
         int address = regs[reg1].read() + offset;
-        if (reg1 > 9 || reg1 < 0 || reg2 > 9 || reg2 < 0 || address < memStart || address > memEnd) {
+        if (address < memStart || address > memEnd) {
             return -1; // undefined behavior
         }
         regs[reg2].write(address);
@@ -159,7 +172,7 @@ public class CPU {
     // st reg1, offset(reg2)
     private int storeMemory(int offset, int reg1, int reg2) {
         int address = regs[reg2].read() + offset;
-        if (reg1 > 9 || reg1 < 0 || reg2 > 9 || reg2 < 0 || address < memStart || address > memEnd) {
+        if (address < memStart || address > memEnd) {
             return -1; // undefined behavior
         }
         mem.write(address, regs[reg1].read());
@@ -168,25 +181,46 @@ public class CPU {
 
     // mov reg1, reg2
     private int move(int reg1, int reg2) {
-        if (reg1 > 9 || reg1 < 0 || reg2 > 9 || reg2 < 0) {
-            return -1; // undefined behavior
-        }
         regs[reg2].write(regs[reg1].read());
         return 1;
     }
 
+    // inc register
+    private int increment(int register) {
+        regs[register].write(regs[register].read() + 1);
+        return 1;
+    }
+
+    // dec register
+    private int decrement(int register) {
+        regs[register].write(regs[register].read() - 1);
+        return 1;
+    }
+
+    // add reg1, reg2
+    private int add(int reg1, int reg2) {
+        regs[reg2].write(regs[reg1].read() + regs[reg2].read());
+        return 1;
+    }
+
+    // not register
+    private int not(int register) {
+        regs[register].write(~regs[register].read());
+        return 1;
+    }
+
+    // and reg1, reg2
+    private int and(int reg1, int reg2) {
+        regs[reg2].write(regs[reg1].read() & regs[reg2].read());
+        return 1;
+    }
+
     private int logRegister(int register) {
-        if (register > 9 || register < 0) {
-            return -1; // undefined behavior
-        }
         System.out.print(regs[register].read());
         return 1;
     }
 
     private int logFormatRegister(int register) {
-        if (register > 9 || register < 0) {
-            return -1; // undefined behavior
-        }
         char c = (char) (regs[register].read() & 0xFF);
         System.out.print(c);
         return 1;
@@ -194,7 +228,7 @@ public class CPU {
 
     private int logMemory(int offset, int register) {
         int address = regs[register].read() + offset;
-        if (register > 9 || register < 0 || address < memStart || address > memEnd) {
+        if (address < memStart || address > memEnd) {
             return -1; // undefined behavior
         }
         System.out.print(mem.read(address));
@@ -203,7 +237,7 @@ public class CPU {
 
     private int logFormatMemory(int offset, int register) {
         int address = regs[register].read() + offset;
-        if (register > 9 || register < 0 || address < memStart || address > memEnd) {
+        if (address < memStart || address > memEnd) {
             return -1; // undefined behavior
         }
         char c = (char) (mem.read(address) & 0xFF);
@@ -216,6 +250,7 @@ public class CPU {
         for (int i = 0; i < regs.length; i++) {
             System.out.println(i + ": " + regs[i].read());
         }
+        System.out.println("PC: " + pc.read());
         return 1;
     }
 
