@@ -61,6 +61,7 @@ public class CPU {
         int insNum2 = ((instruction >> 16) & 0xF);
         int insNum3 = ((instruction >> 12) & 0xF);
         int insImm = instruction & 0xFFFF;
+        int insImmByte = instruction & 0xFF;
         switch (insOp) {
             case 0:
                 if (insNum0 == 0) {
@@ -91,6 +92,14 @@ public class CPU {
                         return not(insNum2);
                     case 5:
                         return and(insNum1, insNum2);
+                    case 6:
+                        return shift(insNum1, (byte) insImmByte);
+                    case 7:
+                        return multiply(insNum1, insNum2);
+                    case 8:
+                        return divide(insNum1, insNum2);
+                    case 9:
+                        return modulus(insNum1, insNum2);
                     default:
                         return -1;
                 }
@@ -231,6 +240,34 @@ public class CPU {
     // and reg1, reg2
     private int and(int reg1, int reg2) {
         regs[reg2].write(regs[reg1].read() & regs[reg2].read());
+        return 1;
+    }
+
+    // shl/shr $v, register
+    private int shift(int register, byte shift) {
+        if (shift < 0) {
+            regs[register].write(regs[register].read() >> -shift);
+        } else {
+            regs[register].write(regs[register].read() << shift);
+        }
+        return 1;
+    }
+
+    // multiply reg1, reg2
+    private int multiply(int reg1, int reg2) {
+        regs[reg2].write(regs[reg1].read() * regs[reg2].read());
+        return 1;
+    }
+
+    // divide reg1, reg2
+    private int divide(int reg1, int reg2) {
+        regs[reg2].write(regs[reg1].read() / regs[reg2].read());
+        return 1;
+    }
+
+    // modulus reg1, reg2
+    private int modulus(int reg1, int reg2) {
+        regs[reg2].write(regs[reg1].read() % regs[reg2].read());
         return 1;
     }
 

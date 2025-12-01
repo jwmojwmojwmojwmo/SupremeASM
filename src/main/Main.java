@@ -30,6 +30,11 @@ public class Main {
         // r[r] + r[s] -> r[s] = 23rs----
         // ~r[r] -> r[r] = 240r----
         // r[r] & r[s] -> r[s] = 25rs----
+        // r[r] << v -> r[r] = 26r---vv
+        // r[r] >> v -> r[r] = 26r---vv (when vv is negative)
+        // r[r] * r[s] -> r[s] = 27rs----
+        // r[r] / r[s] -> r[s] = 28rs----
+        // r[r] % r[s] -> r[s] = 29rs----
         // pc + o -> pc = a00-oooo
         // if r[r] == 0, then pc + o -> pc = a1r-oooo
         // if r[r] > r[s], then pc + o -> pc = a2rsoooo

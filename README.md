@@ -43,6 +43,10 @@ r0 recieves return values for all instructions. Most instructions return either 
 | add two register values | r[r] + r[s] -> r[s] | 23rs---- |
 | not a register value | ~r[r] -> r[r] | 240r---- |
 | and two register values | r[r] & r[s] -> r[s] | 25rs---- |
+| bitshift a register value (bitshift right if v < 0, bitshift left otherwise. Bitshifting follows Java rules, so the bitshift is actually v % 32) (vv is a signed 1 byte value) | if v < 0: r[r] >> v -> r[r] else: r[r] << v -> r[r] | 26r---vv |
+| multiply two register values | r[r] * r[s] -> r[s] | 27rs---- |
+| divide two register values, with the result being truncated to zero | r[r] / r[s] -> r[s] | 28rs---- |
+| modulus two register values | r[r] % r[s] -> r[s] | 29rs---- |
 | indirect jump to another instruction (o is a signed 2 byte value) | pc + o -> pc | a00-oooo |
 | if a register value is equal to zero, then indirect jump to another instruction (o is a signed 2 byte value) | if r[r] == 0: pc + o -> pc | a1r-oooo |
 | if a register value is greater than another, then indirect jump to another instruction (o is a signed 2 byte value) | if r[r] > r[s]: pc + o -> pc | a2rsoooo |
@@ -64,6 +68,7 @@ r0 recieves return values for all instructions. Most instructions return either 
 
 ### Print "Hello World!":
 f1eeffff0000000d 2009ffff 01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000077 07eeffff00000072 08eeffff00000064 10190fff 10291fff 10392fff 10393fff 10494fff 10595fff 10696fff 10497fff 10798fff 10399fff 1089afff 01eeffff00000021 1019bfff 01eeffff0000000a 1019cfff e190ffff e191ffff e192ffff e193ffff e194ffff e195ffff e196ffff e197ffff e198ffff e199ffff e19affff e19bffff e19cffff ffffffff
+
 
 ### Generate, print, and sum numbers 1-10 using a loop:
 01eeffff00000001 04eeffff0000000a 02eeffff0000000b 2402ffff 2102ffff 2312ffff a12f0005 e001ffff e104ffff 2313ffff 2101ffff a00ffff5 e003ffff ffffffff

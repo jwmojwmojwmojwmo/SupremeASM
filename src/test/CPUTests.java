@@ -32,34 +32,34 @@ public class CPUTests {
 
     // @Test
     // public void testMalloc() {
-    //     // Program:
-    //     // malloc(4 * 5) -> f1ee----00000005
-    //     // dumpMem() -> fe------
-    //     // halt -> ffffffff
-    //     byte[] program = new byte[] {
-    //             // malloc 5 and 8 slots
-    //             (byte) 0xF1, (byte) 0xEE, 0x00, 0x00,
-    //             0x00, 0x00, 0x00, 0x05,
-    //             (byte) 0xF1, (byte) 0xEE, 0x00, 0x00,
-    //             0x00, 0x00, 0x00, 0x08,
-    //             // dumpMem
-    //             (byte) 0xFE, 0x00, 0x00, 0x00,
+    // // Program:
+    // // malloc(4 * 5) -> f1ee----00000005
+    // // dumpMem() -> fe------
+    // // halt -> ffffffff
+    // byte[] program = new byte[] {
+    // // malloc 5 and 8 slots
+    // (byte) 0xF1, (byte) 0xEE, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x05,
+    // (byte) 0xF1, (byte) 0xEE, 0x00, 0x00,
+    // 0x00, 0x00, 0x00, 0x08,
+    // // dumpMem
+    // (byte) 0xFE, 0x00, 0x00, 0x00,
 
-    //             // halt
-    //             (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
-    //     };
-    //     String dump = runProgram(program);
-    //     try (FileWriter writer = new FileWriter("output.txt")) {
-    //         writer.write(dump);
-    //         System.out.println("File written successfully!");
-    //     } catch (IOException e) {
-    //         e.printStackTrace();
-    //     }
-    //     assertTrue(dump.contains("0: 4"));
-    //     assertTrue(dump.contains("61: 5"));
-    //     assertTrue(dump.contains("67: 1"));
-    //     assertTrue(dump.contains("68: 8"));
-    //     assertTrue(dump.contains("77: 1"));
+    // // halt
+    // (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+    // };
+    // String dump = runProgram(program);
+    // try (FileWriter writer = new FileWriter("output.txt")) {
+    // writer.write(dump);
+    // System.out.println("File written successfully!");
+    // } catch (IOException e) {
+    // e.printStackTrace();
+    // }
+    // assertTrue(dump.contains("0: 4"));
+    // assertTrue(dump.contains("61: 5"));
+    // assertTrue(dump.contains("67: 1"));
+    // assertTrue(dump.contains("68: 8"));
+    // assertTrue(dump.contains("77: 1"));
     // }
 
     @Test
@@ -232,6 +232,131 @@ public class CPUTests {
     }
 
     @Test
+    public void testShiftLeftImmediate() {
+        // Opcode: 26r---vv (vv > 0 is Left Shift)
+        // r1 = 10
+        // Shift left by 2 -> 40
+        byte[] program = new byte[] {
+                // Load r1 = 10
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A,
+
+                // Shift r1 Left by 2
+                // 26 r- -- vv -> 26 10 00 02
+                (byte) 0x26, (byte) 0x10, 0x00, 0x02,
+
+                // Print r1
+                (byte) 0xE0, 0x01, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+
+        assertEquals("40", runProgram(program).trim());
+    }
+
+    @Test
+    public void testShiftRightImmediate() {
+        // Opcode: 26r---vv (vv < 0 is Right Shift)
+        // r1 = 40
+        // Shift right by 2 -> 10
+        // vv = -2 (0xFE)
+        byte[] program = new byte[] {
+                // Load r1 = 40
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28,
+
+                // Shift r1 Right by 2 (vv = FE)
+                // 26 10 00 FE
+                (byte) 0x26, (byte) 0x10, 0x00, (byte) 0xFE,
+
+                // Print r1
+                (byte) 0xE0, 0x01, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+
+        assertEquals("10", runProgram(program).trim());
+    }
+
+    @Test
+    public void testMultiplyRegisters() {
+        // Opcode: 27rs---- (r[r] * r[s] -> r[s])
+        byte[] program = new byte[] {
+                // r1 = 5
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+                // r2 = 4
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+
+                // Multiply r1 * r2 -> r2
+                // 27 12 00 00
+                (byte) 0x27, 0x12, 0x00, 0x00,
+
+                // Print r2 (Should be 20)
+                (byte) 0xE0, 0x02, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+
+        assertEquals("20", runProgram(program).trim());
+    }
+
+    @Test
+    public void testDivideRegisters() {
+        // Opcode: 28rs---- (r[r] / r[s] -> r[s])
+        byte[] program = new byte[] {
+                // r1 = 100 (Numerator)
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64,
+
+                // r2 = 6 (Divisor)
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06,
+
+                // Divide r1 / r2 -> r2 = 16.6666...
+                (byte) 0x28, 0x12, 0x00, 0x00,
+
+                // Print r2 (Should be 16)
+                (byte) 0xE0, 0x02, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+        byte[] program2 = new byte[] {
+                // r1 = 100 (Numerator)
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64,
+
+                // r2 = 5 (Divisor)
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+
+                // Divide r1 / r2 -> r2.
+                (byte) 0x28, 0x12, 0x00, 0x00,
+
+                // Print r2 (Should be 20)
+                (byte) 0xE0, 0x02, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+
+        assertEquals("16", runProgram(program).trim());
+        assertEquals("20", runProgram(program2).trim());
+    }
+
+    @Test
+    public void testModuloRegisters() {
+        // Opcode: 29rs---- (r[r] % r[s] -> r[s])
+        // r1 = 10
+        // r2 = 3
+        // 10 % 3 = 1
+        byte[] program = new byte[] {
+                // r1 = 10
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A,
+
+                // r2 = 3
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03,
+
+                // Modulo r1 % r2 -> r2
+                // 29 12 00 00
+                (byte) 0x29, 0x12, 0x00, 0x00,
+
+                // Print r2 (Should be 1)
+                (byte) 0xE0, 0x02, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+
+        assertEquals("1", runProgram(program).trim());
+    }
+
+    @Test
     public void testAsciiPrint() {
         byte[] program = new byte[] {
                 // r3 = 65
@@ -258,22 +383,21 @@ public class CPUTests {
         assertEquals("", runProgram(program).trim());
     }
 
-
     @Test
     public void testUnconditionalJump() {
         byte[] program = new byte[] {
-            // r1 = 1
-            (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-            
-            // Jump forward 1 instruction (offset 1)
-            (byte) 0xA0, 0x00, 0x00, 0x01,
+                // r1 = 1
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 
-            // r1 = 99 (Skipped)
-            (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
+                // Jump forward 1 instruction (offset 1)
+                (byte) 0xA0, 0x00, 0x00, 0x01,
 
-            // Print r1
-            (byte) 0xE0, 0x01, 0x00, 0x00,
-            (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+                // r1 = 99 (Skipped)
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
+
+                // Print r1
+                (byte) 0xE0, 0x01, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
         };
         assertEquals("1", runProgram(program).trim());
     }
@@ -281,15 +405,15 @@ public class CPUTests {
     @Test
     public void testJumpIfZeroTaken() {
         byte[] program = new byte[] {
-            // r1 is 0 by default. Jump forward 1.
-            (byte) 0xA1, 0x10, 0x00, 0x01,
+                // r1 is 0 by default. Jump forward 1.
+                (byte) 0xA1, 0x10, 0x00, 0x01,
 
-            // r2 = 99 (Skipped)
-            (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
+                // r2 = 99 (Skipped)
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
 
-            // Print r2 (Should be 0)
-            (byte) 0xE0, 0x02, 0x00, 0x00,
-            (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+                // Print r2 (Should be 0)
+                (byte) 0xE0, 0x02, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
         };
         assertEquals("0", runProgram(program).trim());
     }
@@ -297,18 +421,18 @@ public class CPUTests {
     @Test
     public void testJumpIfZeroNotTaken() {
         byte[] program = new byte[] {
-            // r1 = 5
-            (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+                // r1 = 5
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
 
-            // Jump if r1 == 0 (Not taken)
-            (byte) 0xA1, 0x10, 0x00, 0x01,
+                // Jump if r1 == 0 (Not taken)
+                (byte) 0xA1, 0x10, 0x00, 0x01,
 
-            // r2 = 99 (Executed)
-            (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
+                // r2 = 99 (Executed)
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
 
-            // Print r2
-            (byte) 0xE0, 0x02, 0x00, 0x00,
-            (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+                // Print r2
+                (byte) 0xE0, 0x02, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
         };
         assertEquals("99", runProgram(program).trim());
     }
@@ -316,19 +440,19 @@ public class CPUTests {
     @Test
     public void testJumpIfGreaterThan() {
         byte[] program = new byte[] {
-            // r1 = 10, r2 = 5
-            (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A,
-            (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+                // r1 = 10, r2 = 5
+                (byte) 0x01, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A,
+                (byte) 0x02, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
 
-            // If r1 > r2 (True), Jump 1
-            (byte) 0xA2, 0x12, 0x00, 0x01,
+                // If r1 > r2 (True), Jump 1
+                (byte) 0xA2, 0x12, 0x00, 0x01,
 
-            // r3 = 1 (Skipped)
-            (byte) 0x03, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                // r3 = 1 (Skipped)
+                (byte) 0x03, (byte) 0xEE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 
-            // Print r3 (Should be 0)
-            (byte) 0xE0, 0x03, 0x00, 0x00,
-            (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+                // Print r3 (Should be 0)
+                (byte) 0xE0, 0x03, 0x00, 0x00,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
         };
         assertEquals("0", runProgram(program).trim());
     }
