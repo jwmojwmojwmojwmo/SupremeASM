@@ -25,7 +25,8 @@ PC holds the next instruction to execute, not the current instruction being exec
 
 r0 recieves return values for all instructions. Most instructions return either 1 for success or -1 for fail. Special cases:
 - memory allocation instruction returns address of first memory slot in the allocated memory block
- - memory defragment instruction returns number of blocks defragmented (coalesced together).
+ - memory defragment instruction returns number of blocks defragmented (coalesced together)
+ - get user input instruction returns the user's input
 - halt returns 0, which tells the CPU to end execution
 
 ## ISA:
@@ -58,6 +59,7 @@ r0 recieves return values for all instructions. Most instructions return either 
 | allocate a memory block with x memory slots (x*4 bytes) | malloc(x*4) | f1ee----xxxxxxxx |
 | deallocate the memory block with address stored in register | free(r[r]) | f20r---- | 
 | defragment memory (tries to coalesce all memory blocks by iterating over the entire memory until all possible blocks are coalesced. this may take a while if memory is too fragmented) | defrag() | f3------ |
+| get user input. input is parsed as a base 10 int, or a base 16 int if prefixed with "0x". If both of these parsing methods fail, it will take the first character of the input and parse it into its ASCII character code | getInput() | f4------ |
 | do nothing | nop | f0------ |
 | print all register values in terminal | dumpCPU() | fd------ |
 | print all non-zero memory values in terminal | dumpMem() | fe------ |

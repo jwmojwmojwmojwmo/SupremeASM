@@ -46,12 +46,12 @@ public class Main {
         // allocate x * 4 bytes of memory = f1ee----xxxxxxxx
         // deallocate memory block starting at address in register r = f20r----
         // defragment memory = f3------
+        // get user input = f4------
         // dump CPU = fd------
         // dump memory = fe------
         // nop = f0------
         // halt = ffffffff
         System.out.println("Executing your code...\n");
-        userInput.close();
         input = input.replaceAll("\\s+", "");
         try {
             if (input.length() % 8 != 0) {
@@ -69,6 +69,7 @@ public class Main {
             System.out.println(e);
             System.out.println("invalid code or a sysfault was triggered (probably the first one though)");
         }
+        userInput.close();
         System.out.println("\n\nExecution completed");
         System.exit(0);
     }

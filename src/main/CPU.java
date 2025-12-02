@@ -1,9 +1,12 @@
 package main;
 
+import java.util.Scanner;
+
 public class CPU {
     private final Register[] regs;
     private final PC pc;
     private static MainMemory mem;
+    private static final Scanner userInput = new Scanner(System.in);
     private boolean isRunning;
     // insEnd is EXCLUSIVE. instructions go to insEnd - 1
     private int insEnd;
@@ -48,6 +51,7 @@ public class CPU {
                 System.out.println("segfault triggered at instruction @" + pc.read());
             }
             if (!isRunning) {
+                userInput.close();
                 return;
             }
             pc.inc();
@@ -78,6 +82,7 @@ public class CPU {
                 if (insNum0 == 1) {
                     return storeMemoryIndexed(insNum3, insNum1, insNum2);
                 }
+                return -1;
             case 2:
                 switch (insNum0) {
                     case 0:
@@ -113,6 +118,7 @@ public class CPU {
                 if (insNum0 == 2) {
                     return ifGreaterIndirectJump((short) insImm, insNum1, insNum2);
                 }
+                return -1;
             case 0xE:
                 if (insNum0 == 0) {
                     if (insNum1 == 0) {
@@ -135,6 +141,8 @@ public class CPU {
                         return deallocateMemory(insNum2);
                     case 3:
                         return mem.defragmentMemory();
+                    case 4:
+                        return getUserInput();
                     case 0xD:
                         return dump();
                     case 0xE:
@@ -161,6 +169,7 @@ public class CPU {
                 if (insNum0 == 1) {
                     return mem.requestMemoryBlock(secondIns);
                 }
+                return -1;
             case 0xA:
                 return directJump(secondIns);
             default:
@@ -321,6 +330,20 @@ public class CPU {
         char c = (char) (mem.read(address) & 0xFF);
         System.out.print(c);
         return 1;
+    }
+
+    private int getUserInput() {
+        System.out.print("INPUT> ");
+        String input = userInput.nextLine();
+        try {
+            if (input.startsWith("0x") || input.startsWith("0X")) {
+                return Integer.parseInt(input.substring(2), 16);
+            } else {
+                return Integer.parseInt(input);
+            }
+        } catch (Exception e) {
+            return input.charAt(0);
+        }
     }
 
     private int dump() {
