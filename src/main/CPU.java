@@ -12,8 +12,8 @@ public class CPU {
     private int insEnd;
 
     public CPU() {
-        regs = new Register[] { new Register(), new Register(), new Register(), new Register(), new Register(),
-                new Register(), new Register(), new Register(), new Register(), new Register() };
+        regs = new Register[]{new Register(), new Register(), new Register(), new Register(), new Register(),
+                new Register(), new Register(), new Register(), new Register(), new Register()};
         pc = new PC();
         mem = MainMemory.getInstance();
     }
@@ -69,7 +69,7 @@ public class CPU {
         switch (insOp) {
             case 0:
                 if (insNum0 == 0) {
-                    return loadMemory(insNum2, insNum1, insNum3);
+                    return loadMemory((short) insImm, insNum1, insNum2);
                 }
                 if (insNum0 == 1) {
                     return loadMemoryIndexed(insNum2, insNum1, insNum3);
@@ -77,7 +77,7 @@ public class CPU {
                 return -1;
             case 1:
                 if (insNum0 == 0) {
-                    return storeMemory(insNum3, insNum1, insNum2);
+                    return storeMemory((short) insImm, insNum1, insNum2);
                 }
                 if (insNum0 == 1) {
                     return storeMemoryIndexed(insNum3, insNum1, insNum2);
@@ -121,18 +121,18 @@ public class CPU {
                 return -1;
             case 0xE:
                 if (insNum0 == 0) {
-                    if (insNum1 == 0) {
-                        return logRegister(insNum2);
-                    } else {
-                        return logMemory(insNum2, insNum1);
-                    }
-                } else {
-                    if (insNum1 == 0) {
-                        return logFormatRegister(insNum2);
-                    } else {
-                        return logFormatMemory(insNum2, insNum1);
-                    }
+                    return logRegister(insNum2);
                 }
+                if (insNum0 == 1) {
+                    return logMemory(insNum2, insNum1);
+                }
+                if (insNum0 == 2) {
+                    return logFormatRegister(insNum2);
+                }
+                if (insNum0 == 3) {
+                    return logFormatMemory(insNum2, insNum1);
+                }
+                return -1;
             case 0xF:
                 switch (insNum0) {
                     case 0:
@@ -189,7 +189,7 @@ public class CPU {
     }
 
     // ld offset(reg1), reg2
-    private int loadMemory(int offset, int reg1, int reg2) {
+    private int loadMemory(short offset, int reg1, int reg2) {
         int address = regs[reg1].read() + offset;
         regs[reg2].write(mem.read(address));
         return 1;

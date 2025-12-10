@@ -29,48 +29,53 @@ r0 recieves return values for all instructions. Most instructions return either 
  - get user input instruction returns the user's input
 - halt returns 0, which tells the CPU to end execution
 
+Note this means that if you want to use the returned value of an instruction, you must move it to another register, as it will be overwritten in r0 once the next instruction completes.
+
 ## ISA:
 
-| operation | semantics | machine code |
-|---|---|---|
-| load int v into register r | v -> r[r] | 0ree----vvvvvvvv |
-| load base + offset | m[r[r] + o] -> r[s] | 00ros--- |
-| load indexed | m[r[r] + r[o]] -> r[s] | 01ros--- |
-| store base + offset | r[r] -> m[r[s] + o] | 10rso--- |
-| store indexed | r[r] -> m[r[s] + r[o]] | 11rso--- |
-| copy register value into another register | r[r] -> r[s] | 20rs---- |
-| increment a register value | r[r] + 1 -> r[r] | 210r---- |
-| decrement a register value | r[r] - 1 -> r[r] | 220r---- |
-| add two register values | r[r] + r[s] -> r[s] | 23rs---- |
-| not a register value | ~r[r] -> r[r] | 240r---- |
-| and two register values | r[r] & r[s] -> r[s] | 25rs---- |
-| bitshift a register value (bitshift right if v < 0, bitshift left otherwise. Bitshifting follows Java rules, so the bitshift is actually v % 32) (vv is a signed 1 byte value) | if v < 0: r[r] >> v -> r[r] else: r[r] << v -> r[r] | 26r---vv |
-| multiply two register values | r[r] * r[s] -> r[s] | 27rs---- |
-| divide two register values, with the result being truncated to zero | r[r] / r[s] -> r[s] | 28rs---- |
-| modulus two register values | r[r] % r[s] -> r[s] | 29rs---- |
-| indirect jump to another instruction (o is a signed 2 byte value) | pc + o -> pc | a00-oooo |
-| if a register value is equal to zero, then indirect jump to another instruction (o is a signed 2 byte value) | if r[r] == 0: pc + o -> pc | a1r-oooo |
-| if a register value is greater than another, then indirect jump to another instruction (o is a signed 2 byte value) | if r[r] > r[s]: pc + o -> pc | a2rsoooo |
-| direct jump to another instruction | v -> pc | afee----vvvvvvvv |
-| print register value in terminal | print(r[r]) | e00r---- |
-| print memory value with base + offset in terminal | print(m[r[r] + o]) | e0ro---- |
-| print register value in terminal with ascii conversion | printWithFormatting(r[r]) | e10r---- |
-| print memory value with base + offset in terminal with ascii conversion | printWithFormatting(m[r[r] + o]) | e1ro---- |
-| allocate a memory block with x memory slots (x*4 bytes) | malloc(x*4) | f1ee----xxxxxxxx |
-| deallocate the memory block with address stored in register | free(r[r]) | f20r---- | 
-| defragment memory (tries to coalesce all memory blocks by iterating over the entire memory until all possible blocks are coalesced. this may take a while if memory is too fragmented) | defrag() | f3------ |
-| get user input. input is parsed as a base 10 int, or a base 16 int if prefixed with "0x". If both of these parsing methods fail, it will take the first character of the input and parse it into its ASCII character code | getInput() | f4------ |
-| do nothing | nop | f0------ |
-| print all register values in terminal | dumpCPU() | fd------ |
-| print all non-zero memory values in terminal | dumpMem() | fe------ |
-| halt | halt | ffffffff |
+| operation                                                                                                                                                                                                                 | semantics                                           | machine code     |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|------------------|
+| load int v into register r                                                                                                                                                                                                | v -> r[r]                                           | 0ree----vvvvvvvv |
+| load base + offset (o is a signed two byte value)                                                                                                                                                                         | m[r[r] + o] -> r[s]                                 | 00rsoooo         |
+| load indexed                                                                                                                                                                                                              | m[r[r] + r[o]] -> r[s]                              | 01ros---         |
+| store base + offset (o is a signed two byte value)                                                                                                                                                                        | r[r] -> m[r[s] + o]                                 | 10rsoooo         |
+| store indexed                                                                                                                                                                                                             | r[r] -> m[r[s] + r[o]]                              | 11rso---         |
+| copy register value into another register                                                                                                                                                                                 | r[r] -> r[s]                                        | 20rs----         |
+| increment a register value                                                                                                                                                                                                | r[r] + 1 -> r[r]                                    | 210r----         |
+| decrement a register value                                                                                                                                                                                                | r[r] - 1 -> r[r]                                    | 220r----         |
+| add two register values                                                                                                                                                                                                   | r[r] + r[s] -> r[s]                                 | 23rs----         |
+| not a register value                                                                                                                                                                                                      | ~r[r] -> r[r]                                       | 240r----         |
+| and two register values                                                                                                                                                                                                   | r[r] & r[s] -> r[s]                                 | 25rs----         |
+| bitshift a register value (bitshift right if v < 0, bitshift left otherwise. Bitshifting follows Java rules, so the bitshift is actually v % 32) (vv is a signed 1 byte value)                                            | if v < 0: r[r] >> v -> r[r] else: r[r] << v -> r[r] | 26r---vv         |
+| multiply two register values                                                                                                                                                                                              | r[r] * r[s] -> r[s]                                 | 27rs----         |
+| divide two register values, with the result being truncated to zero                                                                                                                                                       | r[r] / r[s] -> r[s]                                 | 28rs----         |
+| modulus two register values                                                                                                                                                                                               | r[r] % r[s] -> r[s]                                 | 29rs----         |
+| indirect jump to another instruction (o is a signed 2 byte value)                                                                                                                                                         | pc + o -> pc                                        | a00-oooo         |
+| if a register value is equal to zero, then indirect jump to another instruction (o is a signed 2 byte value)                                                                                                              | if r[r] == 0: pc + o -> pc                          | a1r-oooo         |
+| if a register value is greater than another, then indirect jump to another instruction (o is a signed 2 byte value)                                                                                                       | if r[r] > r[s]: pc + o -> pc                        | a2rsoooo         |
+| direct jump to another instruction                                                                                                                                                                                        | v -> pc                                             | afee----vvvvvvvv |
+| print register value in terminal                                                                                                                                                                                          | print(r[r])                                         | e00r----         |
+| print memory value with base + offset in terminal                                                                                                                                                                         | print(m[r[r] + o])                                  | e1ro----         |
+| print register value in terminal with ascii conversion                                                                                                                                                                    | printWithFormatting(r[r])                           | e20r----         |
+| print memory value with base + offset in terminal with ascii conversion                                                                                                                                                   | printWithFormatting(m[r[r] + o])                    | e3ro----         |
+| allocate a memory block with x memory slots (x*4 bytes)                                                                                                                                                                   | malloc(x*4)                                         | f1ee----xxxxxxxx |
+| deallocate the memory block with address stored in register                                                                                                                                                               | free(r[r])                                          | f20r----         | 
+| defragment memory (tries to coalesce all memory blocks by iterating over the entire memory until all possible blocks are coalesced. this may take a while if memory is too fragmented)                                    | defrag()                                            | f3------         |
+| get user input. input is parsed as a base 10 int, or a base 16 int if prefixed with "0x". If both of these parsing methods fail, it will take the first character of the input and parse it into its ASCII character code | getInput()                                          | f4------         |
+| do nothing                                                                                                                                                                                                                | nop                                                 | f0------         |
+| print all register values in terminal                                                                                                                                                                                     | dumpCPU()                                           | fd------         |    
+| print all non-zero memory values in terminal                                                                                                                                                                              | dumpMem()                                           | fe------         |
+| halt                                                                                                                                                                                                                      | halt                                                | ffffffff         |
 
 
 ## Examples:
 
 ### Print "Hello World!":
-f1eeffff0000000d 2009ffff 01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000077 07eeffff00000072 08eeffff00000064 10190fff 10291fff 10392fff 10393fff 10494fff 10595fff 10696fff 10497fff 10798fff 10399fff 1089afff 01eeffff00000021 1019bfff 01eeffff0000000a 1019cfff e190ffff e191ffff e192ffff e193ffff e194ffff e195ffff e196ffff e197ffff e198ffff e199ffff e19affff e19bffff e19cffff ffffffff
+01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000057 07eeffff00000072 08eeffff00000064 09eeffff00000021 e201ffff e202ffff e203ffff e203ffff e204ffff e205ffff e206ffff e204ffff e207ffff e203ffff e208ffff e209ffff ffffffff
 
 
 ### Generate, print, and sum numbers 1-10 using a loop:
 01eeffff00000001 04eeffff0000000a 02eeffff0000000b 2402ffff 2102ffff 2312ffff a12f0005 e001ffff e104ffff 2313ffff 2101ffff a00ffff5 e003ffff ffffffff
+
+### Produce the nth Fibonacci Number:
+09eeffff0000006e 08eeffff00000020 01eeffff00000000 02eeffff00000001 e109ffff e108ffff f4ffffff 2008ffff a2280007 2208ffff a18f0007 2023ffff 2312ffff 2031ffff 2208ffff a000fffa e001ffff ffffffff e002ffff ffffffff

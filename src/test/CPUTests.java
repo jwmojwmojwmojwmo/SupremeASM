@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import main.CPU;
 
+//TODO REFACTOR
+
 public class CPUTests {
     private String runProgram(byte[] program) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
