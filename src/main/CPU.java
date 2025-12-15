@@ -84,30 +84,19 @@ public class CPU {
                 }
                 return -1;
             case 2:
-                switch (insNum0) {
-                    case 0:
-                        return move(insNum1, insNum2);
-                    case 1:
-                        return increment(insNum2);
-                    case 2:
-                        return decrement(insNum2);
-                    case 3:
-                        return add(insNum1, insNum2);
-                    case 4:
-                        return not(insNum2);
-                    case 5:
-                        return and(insNum1, insNum2);
-                    case 6:
-                        return shift(insNum1, (byte) insImmByte);
-                    case 7:
-                        return multiply(insNum1, insNum2);
-                    case 8:
-                        return divide(insNum1, insNum2);
-                    case 9:
-                        return modulus(insNum1, insNum2);
-                    default:
-                        return -1;
-                }
+                return switch (insNum0) {
+                    case 0 -> move(insNum1, insNum2);
+                    case 1 -> increment(insNum2);
+                    case 2 -> decrement(insNum2);
+                    case 3 -> add(insNum1, insNum2);
+                    case 4 -> not(insNum2);
+                    case 5 -> and(insNum1, insNum2);
+                    case 6 -> shift(insNum1, (byte) insImmByte);
+                    case 7 -> multiply(insNum1, insNum2);
+                    case 8 -> divide(insNum1, insNum2);
+                    case 9 -> modulus(insNum1, insNum2);
+                    default -> -1;
+                };
             case 0xA:
                 if (insNum0 == 0) {
                     return indirectJump((short) insImm);
@@ -118,41 +107,44 @@ public class CPU {
                 if (insNum0 == 2) {
                     return ifGreaterIndirectJump((short) insImm, insNum1, insNum2);
                 }
+                if (insNum0 == 3) {
+                    return getProgramCounter((short) insImm, insNum1);
+                }
                 return -1;
             case 0xE:
                 if (insNum0 == 0) {
                     return logRegister(insNum2);
                 }
                 if (insNum0 == 1) {
-                    return logMemory(insNum2, insNum1);
+                    return logMemory((short) insImm, insNum1);
                 }
                 if (insNum0 == 2) {
-                    return logFormatRegister(insNum2);
+                    return logMemoryIndexed(insNum1, insNum2);
                 }
                 if (insNum0 == 3) {
-                    return logFormatMemory(insNum2, insNum1);
+                    return logFormatRegister(insNum2);
+                }
+                if (insNum0 == 4) {
+                    return logFormatMemory((short) insImm, insNum1);
+                }
+                if (insNum0 == 5) {
+                    return logFormatMemoryIndexed(insNum1, insNum2);
                 }
                 return -1;
             case 0xF:
-                switch (insNum0) {
-                    case 0:
-                        return 1;
-                    case 2:
-                        return deallocateMemory(insNum2);
-                    case 3:
-                        return mem.defragmentMemory();
-                    case 4:
-                        return getUserInput();
-                    case 0xD:
-                        return dump();
-                    case 0xE:
-                        return mem.dump();
-                    case 0xF:
+                return switch (insNum0) {
+                    case 0 -> 1;
+                    case 2 -> deallocateMemory(insNum2);
+                    case 3 -> mem.defragmentMemory();
+                    case 4 -> getUserInput();
+                    case 0xD -> dump();
+                    case 0xE -> mem.dump();
+                    case 0xF -> {
                         isRunning = false;
-                        return 0;
-                    default:
-                        return -1;
-                }
+                        yield 0;
+                    }
+                    default -> -1;
+                };
             default:
                 return -1;
         }
@@ -302,6 +294,11 @@ public class CPU {
         return 1;
     }
 
+    private int getProgramCounter(short offset, int register) {
+        regs[register].write(pc.read() + offset);
+        return 1;
+    }
+
     // j address
     private int directJump(int address) {
         pc.write(address);
@@ -319,14 +316,27 @@ public class CPU {
         return 1;
     }
 
-    private int logMemory(int offset, int register) {
+    private int logMemory(short offset, int register) {
         int address = regs[register].read() + offset;
         System.out.print(mem.read(address));
         return 1;
     }
 
-    private int logFormatMemory(int offset, int register) {
+    private int logMemoryIndexed(int reg1, int reg2) {
+        int address = regs[reg1].read() + regs[reg2].read();
+        System.out.println(mem.read(address));
+        return 1;
+    }
+
+    private int logFormatMemory(short offset, int register) {
         int address = regs[register].read() + offset;
+        char c = (char) (mem.read(address) & 0xFF);
+        System.out.print(c);
+        return 1;
+    }
+
+    private int logFormatMemoryIndexed(int reg1, int reg2) {
+        int address = regs[reg1].read() + regs[reg2].read();
         char c = (char) (mem.read(address) & 0xFF);
         System.out.print(c);
         return 1;

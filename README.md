@@ -77,11 +77,10 @@ Note this means that if you want to use the returned value of an instruction, yo
 ## Examples:
 
 ### Print "Hello World!":
-01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000057 07eeffff00000072 08eeffff00000064 09eeffff00000021 e201ffff e202ffff e203ffff e203ffff e204ffff e205ffff e206ffff e204ffff e207ffff e203ffff e208ffff e209ffff ffffffff
-
+01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000057 07eeffff00000072 08eeffff00000064 09eeffff00000021 e301ffff e302ffff e303ffff e303ffff e304ffff e305ffff e306ffff e304ffff e307ffff e303ffff e308ffff e309ffff ffffffff
 
 ### Generate, print, and sum numbers 1-10 using a loop:
-01eeffff00000001 04eeffff0000000a 02eeffff0000000b 2402ffff 2102ffff 2312ffff a12f0005 e001ffff e104ffff 2313ffff 2101ffff a00ffff5 e003ffff ffffffff
+01eeffff00000001 02eeffff0000000b 09eeffff0000000a 2013ffff 2403ffff 2103ffff 2323ffff a13f0005 e001ffff e309ffff 2314ffff 2101ffff a00ffff6 e004ffff ffffffff
 
 ### Produce the nth Fibonacci Number:
-09eeffff0000006e 08eeffff00000020 01eeffff00000000 02eeffff00000001 e109ffff e108ffff f4ffffff 2008ffff a2280007 2208ffff a18f0007 2023ffff 2312ffff 2031ffff 2208ffff a000fffa e001ffff ffffffff e002ffff ffffffff
+09eeffff0000006e 08eeffff00000020 01eeffff00000000 02eeffff00000001 e309ffff e308ffff f4ffffff 2008ffff a2280007 2208ffff a18f0007 2023ffff 2312ffff 2031ffff 2208ffff a000fffa e001ffff ffffffff e002ffff ffffffff
