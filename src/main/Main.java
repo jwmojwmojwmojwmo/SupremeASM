@@ -2,6 +2,7 @@ package main;
 
 import exceptions.BadCodeException;
 
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
@@ -42,12 +43,12 @@ public class Main {
          pc + o -> pc = a00-oooo = jmp #o
          if r[r] == 0, then pc + o -> pc = a1r-oooo = ife r, #o
          if r[r] > r[s], then pc + o -> pc = a2rsoooo = igt r, s, #o
-         pc + o -> r[r] = a3r-oooo = gpc #o, r
+         pc + o -> r[r] = a3r-oooo = gpc r, #o
          vvvvvvvv -> pc = afee----vvvvvvvv = goto #v
-         print(r[r]) = e00r---- = prt r
+         print(r[r]) = e00r---- // DEPRECATED
          print(m[r[r] + o]) = e1r-oooo = prt r+#o
          print (m[r[r]+r[o]]) = e2ro---- = prt r+o
-         printWithFormatting(r[r]) ie ascii = e30r---- = prf r
+         printWithFormatting(r[r]) ie ascii = e30r---- // DEPRECATED
          printWithFormatting(m[r[r] + o]) ie ascii = e4r-oooo = prf r+#o
          printWithFormatting (m[r[r]+r[o]]) = e5ro---- = prf r+o
          allocate x * 4 bytes of memory = f1ee----xxxxxxxx = moc #x
@@ -63,7 +64,6 @@ public class Main {
         */
         System.out.println("Executing your code...\n");
         CPU cpu = new CPU();
-        parser.parse(input);
         try {
             byte[] instructions = parser.parse(input);
             cpu.load(instructions);

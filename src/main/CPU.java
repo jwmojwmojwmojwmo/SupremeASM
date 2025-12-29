@@ -48,7 +48,7 @@ public class CPU {
                 regs[0].write(-1);
             }
             if (regs[0].read() == -1) {
-                System.out.println("segfault triggered at instruction @" + pc.read());
+                System.out.println("segfault triggered at instruction @" + (pc.read() - 1));
             }
             if (!isRunning) {
                 userInput.close();

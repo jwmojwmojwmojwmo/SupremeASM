@@ -2,7 +2,7 @@ package main;
 
 import exceptions.BadCodeException;
 
-import java.util.Arrays;
+import java.util.Objects;
 
 public class InputParser {
     public InputParser() {
@@ -13,13 +13,14 @@ public class InputParser {
             if (Character.isDigit(input.charAt(0))) {
                 return parseMachine(input);
             } else {
-                return parseAssembly(input);
+                return parseMachine(parseAssembly(input));
             }
         } catch (Exception e) {
             throw new BadCodeException();
         }
     }
 
+    // returns CPU readable instructions from machine code
     private byte[] parseMachine(String input) throws BadCodeException {
         input = input.replaceAll("\\s+", "");
         if (input.length() % 8 != 0) {
@@ -32,13 +33,15 @@ public class InputParser {
         return instructions;
     }
 
-    private byte[] parseAssembly(String input) throws BadCodeException {
+    // returns machine code from assembly
+    private String parseAssembly(String input) throws BadCodeException {
         String[] instructions = input.trim().split("\\s*;\\s*");
         StringBuilder machineCode = new StringBuilder();
-        for (String instruction: instructions) {
+        for (String instruction : instructions) {
             machineCode.append(translate(instruction));
         }
-        return parseMachine(machineCode.toString());
+        System.out.println(machineCode);
+        return machineCode.toString();
     }
 
     private String translate(String instruction) throws BadCodeException {
@@ -46,7 +49,9 @@ public class InputParser {
         return switch (insParts[0]) {
             case "ld" -> translateLoad(insParts);
             case "st" -> translateStore(insParts);
-            case "mov" -> translateMov(insParts);
+            case "mov" -> {
+                yield "20" + insParts[1] + insParts[2] + "ffff";
+            }
             case "inc", "dec", "add", "not", "and", "shf", "mul", "div", "mod", "sub" -> translateArithmetic(insParts);
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
@@ -69,37 +74,113 @@ public class InputParser {
             case "halt" -> {
                 yield "ffffffff";
             }
-
             default -> throw new BadCodeException();
         };
     }
 
-    //TODO
     private String translateLoad(String[] insParts) {
-        return null;
+        String instruction;
+        if (insParts[1].contains("+")) {
+            if (insParts[1].contains("#")) {
+                instruction = "00" + insParts[1].charAt(0) + insParts[2] + String.format("%04x", Integer.decode(insParts[1].substring(3)) & 0xFFFF);
+            } else {
+                instruction = "01" + insParts[1].charAt(0) + insParts[1].charAt(2) + insParts[2] + "fff";
+            }
+        } else {
+            instruction = "0" + insParts[2] + "eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
+        }
+        return instruction;
     }
 
     private String translateStore(String[] insParts) {
-        return null;
+        String instruction;
+        if (insParts[2].contains("#")) {
+            instruction = "10" + insParts[1] + insParts[2].charAt(0) + String.format("%04x", Integer.decode(insParts[2].substring(3)) & 0xFFFF);
+        } else {
+            instruction = "11" + insParts[1] + insParts[2].charAt(0) + insParts[2].charAt(2) + "fff";
+        }
+        return instruction;
     }
 
-    private String translateMov(String[] insParts) {
-        return null;
+    private String translateArithmetic(String[] insParts) throws BadCodeException {
+        String instruction;
+        switch (insParts[0]) {
+            case "inc":
+                instruction = "210" + insParts[1] + "ffff";
+                break;
+            case "dec":
+                instruction = "220" + insParts[1] + "ffff";
+                break;
+            case "add":
+                instruction = "23" + insParts[1] + insParts[2] + "ffff";
+                break;
+            case "not":
+                instruction = "240" + insParts[1] + "ffff";
+                break;
+            case "and":
+                instruction = "25" + insParts[1] + insParts[2] + "ffff";
+                break;
+            case "shf":
+                instruction = "26" + insParts[2] + "fff" + String.format("%02x", Integer.decode(insParts[1].substring(1)) & 0xFF);
+                break;
+            case "mul":
+                instruction = "27" + insParts[1] + insParts[2] + "ffff";
+                break;
+            case "div":
+                instruction = "28" + insParts[1] + insParts[2] + "ffff";
+                break;
+            case "mod":
+                instruction = "29" + insParts[1] + insParts[2] + "ffff";
+                break;
+            case "sub":
+                String f = insParts[1];
+                String s = insParts[2];
+                instruction = parseAssembly("not " + s + "; inc " + s + "; add " + f + ", " + s + ";");
+                break;
+            default:
+                throw new BadCodeException();
+        }
+        return instruction;
     }
 
-    private String translateArithmetic(String[] insParts) {
-        return null;
-    }
-
-    private String translateControl(String[] insParts) {
-        return null;
+    private String translateControl(String[] insParts) throws BadCodeException {
+        String instruction = switch (insParts[0]) {
+            case "jmp" -> "a00f" + String.format("%04x", Integer.decode(insParts[1].substring(1)) & 0xFFFF);
+            case "ife" -> "a1" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
+            case "igt" -> "a2" + insParts[1] + insParts[2] + String.format("%04x", Integer.decode(insParts[3].substring(1)) & 0xFFFF);
+            case "gpc" -> "a3" + insParts[1] + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
+            case "goto" -> "afeeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
+            default -> throw new BadCodeException();
+        };
+        return instruction;
     }
 
     private String translatePrint(String[] insParts) {
-        return null;
+        String instruction;
+        if (insParts[0].equals("prt")) {
+            if (insParts[1].contains("#")) {
+                instruction = "e1" + insParts[1].charAt(0) + "f" + String.format("%04x", Integer.decode(insParts[1].substring(3)) & 0xFFFF);
+            } else {
+                instruction = "e2" + insParts[1].charAt(0) + insParts[1].charAt(2) + "ffff";
+            }
+        } else {
+            if (insParts[1].contains("#")) {
+                instruction = "e4" + insParts[1].charAt(0) + "f" + String.format("%04x", Integer.decode(insParts[1].substring(3)) & 0xFFFF);
+            } else {
+                instruction = "e5" + insParts[1].charAt(0) + insParts[1].charAt(2) + "ffff";
+            }
+        }
+        return instruction;
     }
 
     private String translateSystem(String[] insParts) {
-        return null;
+        String instruction;
+        if (insParts[0].equals("moc")) {
+            instruction = "f1eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
+        } else {
+            instruction = "f20" + insParts[1] + "ffff";
+        }
+        return instruction;
     }
 }
+
