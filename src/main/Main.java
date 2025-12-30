@@ -66,7 +66,7 @@ public class Main {
             byte[] instructions = parser.parse(input);
             long endTime = System.nanoTime();
             long durationNs = (endTime - startTime);  // Duration in nanoseconds
-            System.out.println("Code compiled in " + durationNs / 1000000 + " ms. Executing code...\n");
+            System.out.println("Code compiled in " + (double) durationNs / 1000000 + " ms. Executing code...\n");
             cpu.load(instructions);
             cpu.run();
         } catch (BadCodeException e) {
