@@ -1,12 +1,10 @@
 package main;
 
 import exceptions.BadCodeException;
-
-import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         System.out.println("Welcome to SupremeASM v0.1a");
         System.out.println("Write the SupremeASM Machine code to execute:");
         Scanner userInput = new Scanner(System.in);
@@ -45,10 +43,10 @@ public class Main {
          if r[r] > r[s], then pc + o -> pc = a2rsoooo = igt r, s, #o
          pc + o -> r[r] = a3r-oooo = gpc r, #o
          vvvvvvvv -> pc = afee----vvvvvvvv = goto #v
-         print(r[r]) = e00r---- // DEPRECATED
+         print(r[r]) = e00r---- prt r
          print(m[r[r] + o]) = e1r-oooo = prt r+#o
          print (m[r[r]+r[o]]) = e2ro---- = prt r+o
-         printWithFormatting(r[r]) ie ascii = e30r---- // DEPRECATED
+         printWithFormatting(r[r]) ie ascii = e30r---- prf r
          printWithFormatting(m[r[r] + o]) ie ascii = e4r-oooo = prf r+#o
          printWithFormatting (m[r[r]+r[o]]) = e5ro---- = prf r+o
          allocate x * 4 bytes of memory = f1ee----xxxxxxxx = moc #x
@@ -62,10 +60,13 @@ public class Main {
          ASM only instructions:
          r[r] - r[s] -> r[s] = not s; inc s; add r, s; = sub r, s
         */
-        System.out.println("Executing your code...\n");
         CPU cpu = new CPU();
         try {
+            long startTime = System.nanoTime();
             byte[] instructions = parser.parse(input);
+            long endTime = System.nanoTime();
+            long durationNs = (endTime - startTime);  // Duration in nanoseconds
+            System.out.println("Code compiled in " + durationNs / 1000000 + " ms. Executing code...\n");
             cpu.load(instructions);
             cpu.run();
         } catch (BadCodeException e) {

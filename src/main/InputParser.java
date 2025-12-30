@@ -2,8 +2,6 @@ package main;
 
 import exceptions.BadCodeException;
 
-import java.util.Objects;
-
 public class InputParser {
     public InputParser() {
     }
@@ -40,7 +38,6 @@ public class InputParser {
         for (String instruction : instructions) {
             machineCode.append(translate(instruction));
         }
-        System.out.println(machineCode);
         return machineCode.toString();
     }
 
@@ -49,31 +46,17 @@ public class InputParser {
         return switch (insParts[0]) {
             case "ld" -> translateLoad(insParts);
             case "st" -> translateStore(insParts);
-            case "mov" -> {
-                yield "20" + insParts[1] + insParts[2] + "ffff";
-            }
+            case "mov" -> "20" + insParts[1] + insParts[2] + "ffff";
             case "inc", "dec", "add", "not", "and", "shf", "mul", "div", "mod", "sub" -> translateArithmetic(insParts);
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
             case "moc", "doc" -> translateSystem(insParts);
-            case "dfg" -> {
-                yield "f3ffffff";
-            }
-            case "inp" -> {
-                yield "f4ffffff";
-            }
-            case "dpc" -> {
-                yield "fdffffff";
-            }
-            case "dpm" -> {
-                yield "feffffff";
-            }
-            case "nop" -> {
-                yield "f0ffffff";
-            }
-            case "halt" -> {
-                yield "ffffffff";
-            }
+            case "dfg" -> "f3ffffff";
+            case "inp" -> "f4ffffff";
+            case "dpc" -> "fdffffff";
+            case "dpm" -> "feffffff";
+            case "nop" -> "f0ffffff";
+            case "halt" -> "ffffffff";
             default -> throw new BadCodeException();
         };
     }
@@ -160,14 +143,18 @@ public class InputParser {
         if (insParts[0].equals("prt")) {
             if (insParts[1].contains("#")) {
                 instruction = "e1" + insParts[1].charAt(0) + "f" + String.format("%04x", Integer.decode(insParts[1].substring(3)) & 0xFFFF);
-            } else {
+            } else if (insParts[1].contains("+")){
                 instruction = "e2" + insParts[1].charAt(0) + insParts[1].charAt(2) + "ffff";
+            } else {
+                instruction = "e00" + insParts[1] + "ffff";
             }
         } else {
             if (insParts[1].contains("#")) {
                 instruction = "e4" + insParts[1].charAt(0) + "f" + String.format("%04x", Integer.decode(insParts[1].substring(3)) & 0xFFFF);
-            } else {
+            } else if (insParts[1].contains("+")) {
                 instruction = "e5" + insParts[1].charAt(0) + insParts[1].charAt(2) + "ffff";
+            } else {
+                instruction = "e30" + insParts[1] + "ffff";
             }
         }
         return instruction;
