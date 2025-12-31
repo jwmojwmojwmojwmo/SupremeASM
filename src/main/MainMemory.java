@@ -75,6 +75,10 @@ public class MainMemory {
         memory[address] = value;
     }
 
+    public void reset() {
+        mainMemory = null;
+    }
+
     public int dump() {
         System.out.println("\nMemory:");
         for (int i = 0; i < memory.length; i++) {

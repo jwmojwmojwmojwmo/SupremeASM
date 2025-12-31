@@ -3,11 +3,11 @@ package main;
 import java.util.Scanner;
 
 public class CPU {
-    private final Register[] regs;
-    private final PC pc;
+    private Register[] regs;
+    private PC pc;
     private static MainMemory mem;
-    private static final Scanner userInput = new Scanner(System.in);
-    private boolean isRunning;
+    private Scanner userInput;
+    public boolean isRunning;
     // insEnd is EXCLUSIVE. instructions go to insEnd - 1
     private int insEnd;
 
@@ -52,11 +52,19 @@ public class CPU {
                 System.out.println("segfault triggered at instruction @" + (pc.read() - 1));
             }
             if (!isRunning) {
-                userInput.close();
                 return;
             }
             pc.inc();
         }
+    }
+
+    public void reset() {
+        regs = new Register[]{new Register(), new Register(), new Register(), new Register(), new Register(),
+                new Register(), new Register(), new Register(), new Register(), new Register(), new SP()};
+        pc = new PC();
+        mem.reset();
+        mem = MainMemory.getInstance();
+        userInput = null;
     }
 
     private int decodeAndExecute(int instruction) {
@@ -347,8 +355,11 @@ public class CPU {
     }
 
     private int getUserInput() {
+        if (userInput == null) {
+            userInput = new Scanner(System.in);
+        }
         System.out.print("INPUT> ");
-        String input = userInput.nextLine();
+        String input = userInput.next();
         try {
             if (input.startsWith("0x") || input.startsWith("0X")) {
                 return Integer.parseInt(input.substring(2), 16);

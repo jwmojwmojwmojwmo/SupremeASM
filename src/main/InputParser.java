@@ -38,7 +38,6 @@ public class InputParser {
         for (String instruction : instructions) {
             machineCode.append(translate(instruction));
         }
-        System.out.println(machineCode);
         return machineCode.toString();
     }
 
