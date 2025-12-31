@@ -13,7 +13,7 @@ public class CPU {
 
     public CPU() {
         regs = new Register[]{new Register(), new Register(), new Register(), new Register(), new Register(),
-                new Register(), new Register(), new Register(), new Register(), new Register()};
+                new Register(), new Register(), new Register(), new Register(), new Register(), new SP()};
         pc = new PC();
         mem = MainMemory.getInstance();
     }
@@ -36,6 +36,7 @@ public class CPU {
     public void run() {
         int firstIns;
         isRunning = true;
+        regs[10].write(mem.requestMemoryBlock(2048)); // initialise stack pointer
         while (pc.read() <= insEnd) {
             firstIns = mem.read(pc.read() - 1);
             try {
@@ -109,6 +110,9 @@ public class CPU {
                 }
                 if (insNum0 == 3) {
                     return getProgramCounter((short) insImm, insNum1);
+                }
+                if (insNum0 == 4) {
+                    return directJump(insNum1);
                 }
                 return -1;
             case 0xE:
@@ -299,9 +303,9 @@ public class CPU {
         return 1;
     }
 
-    // j address
-    private int directJump(int address) {
-        pc.write(address);
+    // goto register
+    private int directJump(int register) {
+        pc.write(regs[register].read());
         return 1;
     }
 

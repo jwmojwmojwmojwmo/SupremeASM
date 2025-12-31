@@ -33,16 +33,17 @@ public class InputParser {
 
     // returns machine code from assembly
     private String parseAssembly(String input) throws BadCodeException {
-        String[] instructions = input.trim().split("\\s*;\\s*");
+        String[] instructions = input.trim().replaceAll("%sp", "a").split("\\s*;\\s*");
         StringBuilder machineCode = new StringBuilder();
         for (String instruction : instructions) {
             machineCode.append(translate(instruction));
         }
+        System.out.println(machineCode);
         return machineCode.toString();
     }
 
     private String translate(String instruction) throws BadCodeException {
-        String[] insParts = instruction.replace(",", " ").trim().split("\\s+");
+        String[] insParts = instruction.replace(",", " ").replace("%", " ").trim().split("\\s+");
         return switch (insParts[0]) {
             case "ld" -> translateLoad(insParts);
             case "st" -> translateStore(insParts);
@@ -50,7 +51,7 @@ public class InputParser {
             case "inc", "dec", "add", "not", "and", "shf", "mul", "div", "mod", "sub" -> translateArithmetic(insParts);
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
-            case "moc", "doc" -> translateSystem(insParts);
+            case "moc", "doc", "push", "pop" -> translateSystem(insParts);
             case "dfg" -> "f3ffffff";
             case "inp" -> "f4ffffff";
             case "dpc" -> "fdffffff";
@@ -131,8 +132,8 @@ public class InputParser {
             case "jmp" -> "a00f" + String.format("%04x", Integer.decode(insParts[1].substring(1)) & 0xFFFF);
             case "ife" -> "a1" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
             case "igt" -> "a2" + insParts[1] + insParts[2] + String.format("%04x", Integer.decode(insParts[3].substring(1)) & 0xFFFF);
-            case "gpc" -> "a3" + insParts[1] + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
-            case "goto" -> "afeeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
+            case "gpc" -> "a3" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
+            case "goto" -> "a4" + insParts[1] + "fffff";
             default -> throw new BadCodeException();
         };
         return instruction;
@@ -160,13 +161,14 @@ public class InputParser {
         return instruction;
     }
 
-    private String translateSystem(String[] insParts) {
-        String instruction;
-        if (insParts[0].equals("moc")) {
-            instruction = "f1eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
-        } else {
-            instruction = "f20" + insParts[1] + "ffff";
-        }
+    private String translateSystem(String[] insParts) throws BadCodeException {
+        String instruction = switch (insParts[0]) {
+            case "moc" -> "f1eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
+            case "doc" -> "f20" + insParts[1] + "ffff";
+            case "push" -> parseAssembly("inc a; st " + insParts[1] + ", a+#0");
+            case "pop" -> parseAssembly("ld a+#0, " + insParts[1] + "; dec a");
+            default -> throw new BadCodeException();
+        };
         return instruction;
     }
 }

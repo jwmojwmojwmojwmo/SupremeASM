@@ -26,7 +26,7 @@ public class MainMemory {
     // payload
     public int requestMemoryBlock(int size) {
         int i = 0; // i is the address of the header
-        while (memory[i] < (size + 2) || memory[getFooter(i)] == 1) {
+        while ((memory[i] < (size + 2) && memory[i] != size) || memory[getFooter(i)] == 1) {
             i += memory[i] + 2; // increment i by size of payload + size of header + size of footer
             if (i >= memory.length) {
                 return -1; // memory overflow
@@ -89,9 +89,13 @@ public class MainMemory {
     // an allocated block of size size and unallocated block with the remainder
     private void allocateBlock(int header, int size) {
         int restSize = memory[header] - size - 2;
-        memory[header] = size;
-        memory[getFooter(header)] = 1;
-        memory[getFooter(header) + 1] = restSize;
+        if (restSize == -2) { // if block is perfectly the size we want
+            memory[getFooter(header)] = 1;
+        } else {
+            memory[header] = size;
+            memory[getFooter(header)] = 1;
+            memory[getFooter(header) + 1] = restSize;
+        }
     }
 
     // given the address of the header of a allocated memory block, make that block free and attempt to join it with the next neighbouring block
