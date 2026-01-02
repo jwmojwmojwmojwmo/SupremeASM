@@ -3,10 +3,12 @@ package ui;
 import exceptions.BadCodeException;
 import main.CPU;
 import main.InputParser;
+import main.MainMemory;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.util.Map;
 
 public class GUIFrame extends JFrame {
     private final CodePanel editor;
@@ -14,6 +16,8 @@ public class GUIFrame extends JFrame {
     private final CPU cpu;
     private final InputParser parser;
     private Thread runThread;
+    private boolean manuallyStopped = false;
+    private Map<String, Integer> labels;
 
     public GUIFrame(String name) {
         super(name);
@@ -64,9 +68,18 @@ public class GUIFrame extends JFrame {
 
     private void run() {
         String code = editor.getCode();
+        manuallyStopped = false;
         cpu.reset();
         redirectSystemIn();
         console.clear();
+        try {
+            labels = editor.getLabelMap();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (!labels.isEmpty()) {
+            console.append("Labels found: " + labels);
+        }
         runThread = new Thread(() -> {
             console.append("Compiling...");
             try {
@@ -84,15 +97,22 @@ public class GUIFrame extends JFrame {
                 console.append("Code fatally failed or a sysfault was triggered, with error code:");
                 console.append(String.valueOf(e));
             } finally {
-                console.append("Execution completed.");
+                if (manuallyStopped) {
+                    console.append("Execution stopped manually.");
+                } else {
+                    console.append("Execution completed");
+                }
             }
         });
         runThread.start();
     }
 
     private void stop() {
-        cpu.isRunning = false;
-        console.append("Execution stopped manually.");
+        cpu.halt();
+        if (runThread != null && runThread.isAlive()) {
+            runThread.interrupt();
+        }
+        manuallyStopped = true;
     }
 
     private void openFile() {

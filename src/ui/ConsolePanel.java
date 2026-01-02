@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 
 public class ConsolePanel extends JPanel {
     private final JTextArea console;
@@ -29,8 +30,7 @@ public class ConsolePanel extends JPanel {
                     if (console.getCaretPosition() <= lastPromptPos) {
                         e.consume(); // Stop the backspace
                     }
-                }
-                else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     sendUserInput();
                 }
             }
@@ -55,24 +55,36 @@ public class ConsolePanel extends JPanel {
     }
 
     public void append(String text) {
-        SwingUtilities.invokeLater(() -> {
+        safeUpdate(() -> {
             console.append("\n> " + text);
             updateCaretAndPosition();
         });
     }
 
     public void appendWithoutFormatting(String text) {
-        SwingUtilities.invokeLater(() -> {
+        safeUpdate(() -> {
             console.append(text);
             updateCaretAndPosition();
         });
     }
 
     public void clear() {
-        SwingUtilities.invokeLater(() -> {
+        safeUpdate(() -> {
             console.setText("");
             lastPromptPos = 0;
         });
+    }
+
+    // The Magic Method: Checks "Where am I?" and acts accordingly
+    private void safeUpdate(Runnable action) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            action.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(action);
+            } catch (Exception e) {
+            }
+        }
     }
 
     private void updateCaretAndPosition() {

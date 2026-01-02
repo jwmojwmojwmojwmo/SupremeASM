@@ -7,7 +7,7 @@ public class CPU {
     private PC pc;
     private static MainMemory mem;
     private Scanner userInput;
-    public boolean isRunning;
+    public volatile boolean isRunning;
     // insEnd is EXCLUSIVE. instructions go to insEnd - 1
     private int insEnd;
 
@@ -46,6 +46,9 @@ public class CPU {
                     regs[0].write(decodeAndExecute(firstIns));
                 }
             } catch (Exception e) {
+                if (!isRunning) {
+                    return;
+                }
                 regs[0].write(-1);
             }
             if (regs[0].read() == -1) {
@@ -151,16 +154,17 @@ public class CPU {
                     case 4 -> getUserInput();
                     case 0xD -> dump();
                     case 0xE -> mem.dump();
-                    case 0xF -> {
-                        isRunning = false;
-                        yield 0;
-                    }
+                    case 0xF -> halt();
                     default -> -1;
                 };
             default:
                 return -1;
         }
+    }
 
+    public int halt() {
+        isRunning = false;
+        return 0;
     }
 
     private int decodeAndExecute(int firstIns, int secondIns) {
