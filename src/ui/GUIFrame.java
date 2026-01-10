@@ -8,9 +8,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Map;
+import java.nio.file.Files;
 
 public class GUIFrame extends JFrame {
     private final CodePanel editor;
@@ -19,8 +17,83 @@ public class GUIFrame extends JFrame {
     private final InputParser parser;
     private Thread runThread;
     private boolean manuallyStopped = false;
-    private Map<String, Integer> labels;
-    private File currentFile = null;
+    private final String helpText = "<html>" +
+            "<style>" +
+            "  body { font-family: 'Segoe UI', sans-serif; font-size: 12px; margin: 10px; }" +
+            "  h1 { color: #2c3e50; border-bottom: 2px solid #2c3e50; }" +
+            "  h2 { background-color: #ecf0f1; padding: 5px; color: #2980b9; margin-top: 20px; }" +
+            "  h3 { color: #e67e22; margin-bottom: 2px; }" +
+            "  p { margin-top: 5px; line-height: 1.4; }" +
+            "  code { font-family: 'Consolas', monospace; color: #c0392b; background-color: #fce4ec; padding: 2px; }" +
+            "  pre { font-family: 'Consolas', monospace; background-color: #f8f9fa; padding: 10px; border: 1px solid #ddd; overflow: auto; }" +
+            "  ul { margin-top: 5px; }" +
+            "  li { margin-bottom: 5px; }" +
+            "  table { border-collapse: collapse; width: 100%; margin-top: 10px; }" +
+            "  th { background-color: #2c3e50; color: white; text-align: left; padding: 6px; border: 1px solid #ddd; }" +
+            "  td { border: 1px solid #ddd; padding: 5px; vertical-align: top; font-size: 11px; }" +
+            "  tr:nth-child(even) { background-color: #f2f2f2; }" +
+            "  .size-col { text-align: center; font-weight: bold; color: #555; }" +
+            "</style>" +
+            "<body>" +
+            "<h1>SupremeASM Reference</h1>" +
+            "<p><i>A custom assembly language by jwmo.</i></p>" +
+            "" +
+            "<h2>Language Rules</h2>" +
+            "<p>Instructions are 4 or 8 bytes. Memory is stored as 4-byte ints (signed), ie one memory slot is 4 bytes. This also means when pc increments, it jumps one memory slot, or four bytes. Therefore instructions take up either one or two memory slots. </p>" +
+            "<ul>" +
+            "  <li><b>ASM Code:</b> Separated by <code>;</code>. Immediate values in Base 10 (e.g., <code>ld #1, 1</code>). Use // for comments. </li>" +
+            "  <li><b>Registers in ASM:</b> The <code>%</code> symbol is optional (<code>%1</code>) except when using a register's special name (<code>%sp</code>).</li>" +
+            "</ul>" +
+            "<h2>Register Rules</h2>" +
+            "<ul>" +
+            "  <li><b>r0 - r9:</b> General Purpose.</li>" +
+            "  <li><b>r0:</b> Receives return values (1=success, -1=fail, or data from inputs/mallocs).</li>" +
+            "  <li><b>PC:</b> Program Counter (Inaccessible directly, use <code>gpc</code>).</li>" +
+            "  <li><b>rA (r10 / sp):</b> Stack Pointer. Reference as <code>a</code> or <code>%sp</code> in ASM.</li>" +
+            "</ul>" +
+            "<h2>Instruction Set Architecture (ISA)</h2>" +
+            "<table>" +
+            "  <tr><th>Operation</th><th>ASM Code</th><th>Format/Semantics</th><th>Size</th></tr>" +
+            "  <tr><td>Load Immediate</td><td><code>ld #v, r</code></td><td>v -> r[r]</td><td class='size-col'>8</td></tr>" +
+            "  <tr><td>Load Base+Off</td><td><code>ld r+#o, s</code></td><td>m[r[r] + o] -> r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Load Indexed</td><td><code>ld r+o, s</code></td><td>m[r[r] + r[o]] -> r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Store Base+Off</td><td><code>st r, s+#o</code></td><td>r[r] -> m[r[s] + o]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Store Indexed</td><td><code>st r, s+o</code></td><td>r[r] -> m[r[s] + r[o]]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Move Register</td><td><code>mov r, s</code></td><td>r[r] -> r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Increment</td><td><code>inc r</code></td><td>r[r] + 1</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Decrement</td><td><code>dec r</code></td><td>r[r] - 1</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Add</td><td><code>add r, s</code></td><td>r[r] + r[s] -> r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Subtract (Macro)</td><td><code>sub r, s</code></td><td>(Macro: not, inc, add)</td><td class='size-col'>12</td></tr>" +
+            "  <tr><td>Not (Bitwise)</td><td><code>not r</code></td><td>~r[r]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>And (Bitwise)</td><td><code>and r, s</code></td><td>r[r] & r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Bitshift</td><td><code>shf #v, r</code></td><td>Right if v < 0, Left otherwise</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Multiply</td><td><code>mul r, s</code></td><td>r[r] * r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Divide</td><td><code>div r, s</code></td><td>r[r] / r[s] (truncated)</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Modulus</td><td><code>mod r, s</code></td><td>r[r] % r[s]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Jump Indirect</td><td><code>jmp #o</code></td><td>pc + o -> pc</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>If Zero</td><td><code>ife r, #o</code></td><td>if r[r]==0 jump</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>If Greater</td><td><code>igt r, s, #o</code></td><td>if r[r] > r[s] jump</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Get PC</td><td><code>gpc r, #o</code></td><td>pc + o -> r[r]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Goto Address</td><td><code>goto r</code></td><td>r[r] -> pc</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print (Int)</td><td><code>prt r</code></td><td>Print Register (Base 10)</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print Mem (Off)</td><td><code>prt r+#o</code></td><td>Print m[r[r]+o]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print Mem (Idx)</td><td><code>prt r+o</code></td><td>Print m[r[r]+r[o]]</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print ASCII</td><td><code>prf r</code></td><td>Print as Char (formatting)</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print ASCII Mem</td><td><code>prf r+#o</code></td><td>Print Mem as Char</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Input</td><td><code>inp</code></td><td>User Input -> r0</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Dump CPU</td><td><code>dpc</code></td><td>Print all Registers</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Dump Mem</td><td><code>dpm</code></td><td>Print non-zero Mem</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Malloc</td><td><code>moc #x</code></td><td>Allocate x slots (x*4 bytes)</td><td class='size-col'>8</td></tr>" +
+            "  <tr><td>Free</td><td><code>free r</code></td><td>Deallocate block at r</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Defrag</td><td><code>dfg</code></td><td>Coalesce memory blocks</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Push</td><td><code>push r</code></td><td>Macro: inc sp, st r, sp</td><td class='size-col'>8</td></tr>" +
+            "  <tr><td>Pop</td><td><code>pop r</code></td><td>Macro: ld sp, r, dec sp</td><td class='size-col'>8</td></tr>" +
+            "  <tr><td>Call</td><td><code>call file.sasm</code></td><td>Include file inline</td><td class='size-col'>Var</td></tr>" +
+            "  <tr><td>No Op</td><td><code>nop</code></td><td>Do nothing</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Halt</td><td><code>halt</code></td><td>Stop Execution (returns 0)</td><td class='size-col'>4</td></tr>" +
+            "</table>" +
+
+            "</body></html>";
 
     public GUIFrame(String name) {
         super(name);
@@ -45,6 +118,12 @@ public class GUIFrame extends JFrame {
         JButton openBtn = new JButton("Open");
         openBtn.setToolTipText("Open a saved file");
         openBtn.addActionListener(e -> openFile());
+        JButton helpBtn = new JButton("Help");
+        helpBtn.setToolTipText("Open the documentation");
+        helpBtn.addActionListener(e -> showHelp());
+        JButton calcBtn = new JButton("Offset Calculator");
+        calcBtn.setToolTipText("Calculates offset between two lines of code");
+        calcBtn.addActionListener(e -> calculate());
         JButton runBtn = new JButton("Run");
         runBtn.setToolTipText("Compile and Run");
         runBtn.setBackground(new Color(0, 150, 0));
@@ -60,6 +139,8 @@ public class GUIFrame extends JFrame {
         clearBtn.addActionListener(e -> console.clear());
         toolbar.add(saveBtn);
         toolbar.add(openBtn);
+        toolbar.add(helpBtn);
+        toolbar.add(calcBtn);
         toolbar.add(Box.createHorizontalGlue());
         toolbar.add(runBtn);
         toolbar.add(stopBtn);
@@ -74,14 +155,6 @@ public class GUIFrame extends JFrame {
         manuallyStopped = false;
         redirectSystemIn();
         console.clear();
-        try {
-            labels = editor.getLabelMap();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-//        if (!labels.isEmpty()) {
-//            console.append("Labels found: " + labels);
-//        }
         runThread = new Thread(() -> {
             console.append("Compiling...");
             try {
@@ -116,9 +189,8 @@ public class GUIFrame extends JFrame {
         StringBuilder cleanCode = new StringBuilder();
         String[] lines = editor.getCode().split("\n");
         for (String line : lines) {
-            int i = line.indexOf("//");
-            if (i != -1) {
-                line = line.substring(0, i);
+            if (line.contains("//")) {
+                line = line.substring(0, line.indexOf("//"));
             }
             cleanCode.append(line).append("\n");
         }
@@ -144,9 +216,8 @@ public class GUIFrame extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION) {
             File selected = fileChooser.getSelectedFile();
             try {
-                String code = java.nio.file.Files.readString(selected.toPath());
+                String code = Files.readString(selected.toPath());
                 editor.setCode(code);
-                currentFile = selected;
                 console.append("Loaded: " + selected.getName());
             } catch (Exception e) {
                 console.append("Error: " + e.getMessage());
@@ -167,14 +238,86 @@ public class GUIFrame extends JFrame {
                 selected = new File(selected.getAbsolutePath() + ".sasm");
             }
             try {
-                java.nio.file.Files.writeString(selected.toPath(), editor.getCode());
-                currentFile = selected; // Remember this file
+                Files.writeString(selected.toPath(), editor.getCode());
                 console.append("Saved: " + selected.getName());
             } catch (Exception e) {
                 console.append("Error: " + e.getMessage());
             }
         }
+    }
 
+    private void showHelp() {
+        JDialog helpDialog = new JDialog(this, "SupremeASM Help", false);
+        JEditorPane helpPane = new JEditorPane("text/html", helpText);
+        helpPane.setEditable(false);
+        helpPane.setCaretPosition(0);
+        JScrollPane scrollPane = new JScrollPane(helpPane);
+        helpDialog.add(scrollPane);
+        helpDialog.pack();
+        helpDialog.setLocation(this.getX() + this.getWidth(), this.getY());
+        helpDialog.setVisible(true);
+    }
+
+    private void calculate() {
+        JDialog dialog = new JDialog(this, "Jump Calculator");
+        dialog.setLayout(new FlowLayout());
+        dialog.setSize(300, 150);
+        JTextField fromField = new JTextField(5);
+        JTextField toField = new JTextField(5);
+        JLabel resultLabel = new JLabel("Offset: ?");
+        JButton calcBtn = new JButton("Calculate");
+        calcBtn.addActionListener(e -> {
+            try {
+                int from = Integer.parseInt(fromField.getText());
+                int to = Integer.parseInt(toField.getText());
+                int offset = calculateOffset(from, to);
+                resultLabel.setText("Offset: " + (offset / 4) + " memory slots (" + offset + " bytes)");
+                resultLabel.setForeground(Color.BLUE);
+            } catch (NumberFormatException ex) {
+                resultLabel.setText("Invalid Numbers");
+                resultLabel.setForeground(Color.RED);
+            }
+        });
+        dialog.add(new JLabel("From Line:"));
+        dialog.add(fromField);
+        dialog.add(new JLabel("To Line:"));
+        dialog.add(toField);
+        dialog.add(calcBtn);
+        dialog.add(resultLabel);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private int calculateOffset(int fromLine, int toLine) {
+        String[] lines = editor.getCode().split("\n");
+        int offset = 0;
+        if (fromLine < 1 || toLine < 1 || fromLine > lines.length || toLine > lines.length) {
+            return 0;
+        }
+        int start = Math.min(fromLine, toLine) - 1;
+        int end = Math.max(fromLine, toLine) - 1;
+        for (int i = start; i < end; i++) {
+            offset += getInstructionSize(lines[i]);
+        }
+        if (toLine < fromLine) {
+            offset = -offset; // Jumping backwards
+        }
+        offset = offset - getInstructionSize(lines[fromLine - 1]);
+        return offset;
+    }
+
+    private int getInstructionSize(String line) {
+        line = line.trim();
+        if (line.isEmpty() || line.startsWith("//") || line.startsWith(";")) {
+            return 0;
+        }
+        if (line.startsWith("sub")) {
+            return 12;
+        }
+        if (line.startsWith("ld #") || line.startsWith("moc #") || line.startsWith("push") || line.startsWith("pop")) {
+            return 8;
+        }
+        return 4;
     }
 
     private void redirectSystemOut() {

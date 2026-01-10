@@ -36,14 +36,14 @@ public class InputParser {
     }
 
     // returns machine code from assembly
-    private String parseAssembly(String input) throws BadCodeException, IOException {
+    private String parseAssembly(String input) throws BadCodeException {
         String[] instructions = input.trim().replaceAll("%sp", "a").split("\\s*;\\s*");
         StringBuilder machineCode = new StringBuilder();
         for (int i = 0; i < instructions.length; i++) {
             try {
                 machineCode.append(translate(instructions[i]));
             } catch (Exception e) {
-                System.out.println("Code compilation failed at line @" + ++i);
+                System.out.println("Code compilation failed at line @" + (i + 1));
                 throw new BadCodeException();
             }
         }
@@ -59,7 +59,7 @@ public class InputParser {
             case "inc", "dec", "add", "not", "and", "shf", "mul", "div", "mod", "sub" -> translateArithmetic(insParts);
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
-            case "moc", "doc", "push", "pop", "call" -> translateSystem(insParts);
+            case "moc", "free", "push", "pop", "call" -> translateSystem(insParts);
             case "dfg" -> "f3ffffff";
             case "inp" -> "f4ffffff";
             case "dpc" -> "fdffffff";
@@ -172,11 +172,14 @@ public class InputParser {
     private String translateSystem(String[] insParts) throws BadCodeException, IOException {
         String instruction = switch (insParts[0]) {
             case "moc" -> "f1eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
-            case "doc" -> "f20" + insParts[1] + "ffff";
+            case "free" -> "f20" + insParts[1] + "ffff";
             case "push" -> parseAssembly("inc a; st " + insParts[1] + ", a+#0");
             case "pop" -> parseAssembly("ld a+#0, " + insParts[1] + "; dec a");
             case "call" -> {
-                Path path = Path.of("scripts", insParts[1]);
+                Path path = Path.of(insParts[1]);
+                if (!(Files.exists(path))) {
+                    path = Path.of("scripts", insParts[1]);
+                }
                 String code = Files.readString(path);
                 yield parseAssembly(code);
             }
