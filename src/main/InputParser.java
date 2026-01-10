@@ -2,6 +2,10 @@ package main;
 
 import exceptions.BadCodeException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public class InputParser {
     public InputParser() {
     }
@@ -32,16 +36,21 @@ public class InputParser {
     }
 
     // returns machine code from assembly
-    private String parseAssembly(String input) throws BadCodeException {
+    private String parseAssembly(String input) throws BadCodeException, IOException {
         String[] instructions = input.trim().replaceAll("%sp", "a").split("\\s*;\\s*");
         StringBuilder machineCode = new StringBuilder();
-        for (String instruction : instructions) {
-            machineCode.append(translate(instruction));
+        for (int i = 0; i < instructions.length; i++) {
+            try {
+                machineCode.append(translate(instructions[i]));
+            } catch (Exception e) {
+                System.out.println("Code compilation failed at line @" + ++i);
+                throw new BadCodeException();
+            }
         }
         return machineCode.toString();
     }
 
-    private String translate(String instruction) throws BadCodeException {
+    private String translate(String instruction) throws BadCodeException, IOException {
         String[] insParts = instruction.replace(",", " ").replace("%", " ").trim().split("\\s+");
         return switch (insParts[0]) {
             case "ld" -> translateLoad(insParts);
@@ -50,7 +59,7 @@ public class InputParser {
             case "inc", "dec", "add", "not", "and", "shf", "mul", "div", "mod", "sub" -> translateArithmetic(insParts);
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
-            case "moc", "doc", "push", "pop" -> translateSystem(insParts);
+            case "moc", "doc", "push", "pop", "call" -> translateSystem(insParts);
             case "dfg" -> "f3ffffff";
             case "inp" -> "f4ffffff";
             case "dpc" -> "fdffffff";
@@ -85,7 +94,7 @@ public class InputParser {
         return instruction;
     }
 
-    private String translateArithmetic(String[] insParts) throws BadCodeException {
+    private String translateArithmetic(String[] insParts) throws BadCodeException, IOException {
         String instruction;
         switch (insParts[0]) {
             case "inc":
@@ -160,12 +169,17 @@ public class InputParser {
         return instruction;
     }
 
-    private String translateSystem(String[] insParts) throws BadCodeException {
+    private String translateSystem(String[] insParts) throws BadCodeException, IOException {
         String instruction = switch (insParts[0]) {
             case "moc" -> "f1eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
             case "doc" -> "f20" + insParts[1] + "ffff";
             case "push" -> parseAssembly("inc a; st " + insParts[1] + ", a+#0");
             case "pop" -> parseAssembly("ld a+#0, " + insParts[1] + "; dec a");
+            case "call" -> {
+                Path path = Path.of("scripts", insParts[1]);
+                String code = Files.readString(path);
+                yield parseAssembly(code);
+            }
             default -> throw new BadCodeException();
         };
         return instruction;

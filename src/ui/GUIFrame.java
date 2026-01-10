@@ -3,11 +3,13 @@ package ui;
 import exceptions.BadCodeException;
 import main.CPU;
 import main.InputParser;
-import main.MainMemory;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 
 public class GUIFrame extends JFrame {
@@ -18,6 +20,7 @@ public class GUIFrame extends JFrame {
     private Thread runThread;
     private boolean manuallyStopped = false;
     private Map<String, Integer> labels;
+    private File currentFile = null;
 
     public GUIFrame(String name) {
         super(name);
@@ -67,9 +70,8 @@ public class GUIFrame extends JFrame {
     }
 
     private void run() {
-        String code = editor.getCode();
-        manuallyStopped = false;
         cpu.reset();
+        manuallyStopped = false;
         redirectSystemIn();
         console.clear();
         try {
@@ -77,13 +79,14 @@ public class GUIFrame extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (!labels.isEmpty()) {
-            console.append("Labels found: " + labels);
-        }
+//        if (!labels.isEmpty()) {
+//            console.append("Labels found: " + labels);
+//        }
         runThread = new Thread(() -> {
             console.append("Compiling...");
             try {
                 long startTime = System.nanoTime();
+                String code = getCleanCode(editor);
                 byte[] instructions = parser.parse(code);
                 long endTime = System.nanoTime();
                 long durationNs = (endTime - startTime);  // Duration in nanoseconds
@@ -93,6 +96,8 @@ public class GUIFrame extends JFrame {
                 cpu.run();
             } catch (BadCodeException e) {
                 console.append("Code compilation failed. One or more instructions are malformed.");
+            } catch (ArrayIndexOutOfBoundsException e) {
+                console.append("Memory limit reached! Execution stopped.");
             } catch (Exception e) {
                 console.append("Code fatally failed or a sysfault was triggered, with error code:");
                 console.append(String.valueOf(e));
@@ -107,6 +112,20 @@ public class GUIFrame extends JFrame {
         runThread.start();
     }
 
+    private String getCleanCode(CodePanel editor) {
+        StringBuilder cleanCode = new StringBuilder();
+        String[] lines = editor.getCode().split("\n");
+        for (String line : lines) {
+            int i = line.indexOf("//");
+            if (i != -1) {
+                line = line.substring(0, i);
+            }
+            cleanCode.append(line).append("\n");
+        }
+
+        return cleanCode.toString();
+    }
+
     private void stop() {
         cpu.halt();
         if (runThread != null && runThread.isAlive()) {
@@ -116,10 +135,45 @@ public class GUIFrame extends JFrame {
     }
 
     private void openFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File("./scripts"));
+        fileChooser.setFileFilter(new FileNameExtensionFilter("SupremeASM Files", "sasm"));
 
+        int result = fileChooser.showOpenDialog(editor);
+
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selected = fileChooser.getSelectedFile();
+            try {
+                String code = java.nio.file.Files.readString(selected.toPath());
+                editor.setCode(code);
+                currentFile = selected;
+                console.append("Loaded: " + selected.getName());
+            } catch (Exception e) {
+                console.append("Error: " + e.getMessage());
+            }
+        }
     }
 
     private void saveFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File("./scripts")); // Start in default scripts folder
+        // Filter for .sasm files
+        fileChooser.setFileFilter(new FileNameExtensionFilter("SupremeASM Files", "sasm"));
+        int result = fileChooser.showSaveDialog(editor);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selected = fileChooser.getSelectedFile();
+            // Auto-add extension if missing
+            if (!selected.getName().toLowerCase().endsWith(".sasm")) {
+                selected = new File(selected.getAbsolutePath() + ".sasm");
+            }
+            try {
+                java.nio.file.Files.writeString(selected.toPath(), editor.getCode());
+                currentFile = selected; // Remember this file
+                console.append("Saved: " + selected.getName());
+            } catch (Exception e) {
+                console.append("Error: " + e.getMessage());
+            }
+        }
 
     }
 
