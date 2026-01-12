@@ -17,6 +17,7 @@ public class GUIFrame extends JFrame {
     private final InputParser parser;
     private Thread runThread;
     private boolean manuallyStopped = false;
+    private final String name = "SupremeIDE";
     private final String helpText = "<html>" +
             "<style>" +
             "  body { font-family: 'Segoe UI', sans-serif; font-size: 12px; margin: 10px; }" +
@@ -36,12 +37,10 @@ public class GUIFrame extends JFrame {
             "</style>" +
             "<body>" +
             "<h1>SupremeASM Reference</h1>" +
-            "<p><i>A custom assembly language by jwmo.</i></p>" +
-            "" +
             "<h2>Language Rules</h2>" +
             "<p>Instructions are 4 or 8 bytes. Memory is stored as 4-byte ints (signed), ie one memory slot is 4 bytes. This also means when pc increments, it jumps one memory slot, or four bytes. Therefore instructions take up either one or two memory slots. </p>" +
             "<ul>" +
-            "  <li><b>ASM Code:</b> Separated by <code>;</code>. Immediate values in Base 10 (e.g., <code>ld #1, 1</code>). Use // for comments. </li>" +
+            "  <li><b>ASM Code:</b> Separated by <code>;</code>. Immediate values in Base 10 (e.g., <code>ld #1, 1</code>). Use <code>//</code> for comments. </li>" +
             "  <li><b>Registers in ASM:</b> The <code>%</code> symbol is optional (<code>%1</code>) except when using a register's special name (<code>%sp</code>).</li>" +
             "</ul>" +
             "<h2>Register Rules</h2>" +
@@ -66,7 +65,7 @@ public class GUIFrame extends JFrame {
             "  <tr><td>Subtract (Macro)</td><td><code>sub r, s</code></td><td>(Macro: not, inc, add)</td><td class='size-col'>12</td></tr>" +
             "  <tr><td>Not (Bitwise)</td><td><code>not r</code></td><td>~r[r]</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>And (Bitwise)</td><td><code>and r, s</code></td><td>r[r] & r[s]</td><td class='size-col'>4</td></tr>" +
-            "  <tr><td>Bitshift</td><td><code>shf #v, r</code></td><td>Right if v < 0, Left otherwise</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Bitshift</td><td><code>shf #v, r</code></td><td>Right if v is negative, Left otherwise</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Multiply</td><td><code>mul r, s</code></td><td>r[r] * r[s]</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Divide</td><td><code>div r, s</code></td><td>r[r] / r[s] (truncated)</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Modulus</td><td><code>mod r, s</code></td><td>r[r] % r[s]</td><td class='size-col'>4</td></tr>" +
@@ -95,8 +94,9 @@ public class GUIFrame extends JFrame {
 
             "</body></html>";
 
-    public GUIFrame(String name) {
-        super(name);
+    public GUIFrame() {
+        super();
+        setTitle(name);
         setSize(1200, 800);
         editor = new CodePanel();
         console = new ConsolePanel();
@@ -124,6 +124,9 @@ public class GUIFrame extends JFrame {
         JButton calcBtn = new JButton("Offset Calculator");
         calcBtn.setToolTipText("Calculates offset between two lines of code");
         calcBtn.addActionListener(e -> calculate());
+        JButton byteBtn = new JButton("See Bytecode");
+        byteBtn.setToolTipText("Displays bytecode of current ASM program");
+        byteBtn.addActionListener(e -> showByte());
         JButton runBtn = new JButton("Run");
         runBtn.setToolTipText("Compile and Run");
         runBtn.setBackground(new Color(0, 150, 0));
@@ -141,6 +144,7 @@ public class GUIFrame extends JFrame {
         toolbar.add(openBtn);
         toolbar.add(helpBtn);
         toolbar.add(calcBtn);
+        toolbar.add(byteBtn);
         toolbar.add(Box.createHorizontalGlue());
         toolbar.add(runBtn);
         toolbar.add(stopBtn);
@@ -168,7 +172,7 @@ public class GUIFrame extends JFrame {
                 cpu.load(instructions);
                 cpu.run();
             } catch (BadCodeException e) {
-                console.append("Code compilation failed. One or more instructions are malformed.");
+                console.append("Code compilation failed starting at line @" + e.getErrLine());
             } catch (ArrayIndexOutOfBoundsException e) {
                 console.append("Memory limit reached! Execution stopped.");
             } catch (Exception e) {
@@ -178,8 +182,9 @@ public class GUIFrame extends JFrame {
                 if (manuallyStopped) {
                     console.append("Execution stopped manually.");
                 } else {
-                    console.append("Execution completed");
+                    console.append("Execution completed.");
                 }
+                console.append(""); 
             }
         });
         runThread.start();
@@ -194,7 +199,6 @@ public class GUIFrame extends JFrame {
             }
             cleanCode.append(line).append("\n");
         }
-
         return cleanCode.toString();
     }
 
@@ -219,6 +223,7 @@ public class GUIFrame extends JFrame {
                 String code = Files.readString(selected.toPath());
                 editor.setCode(code);
                 console.append("Loaded: " + selected.getName());
+                this.setTitle(name + ": " + selected.getName());
             } catch (Exception e) {
                 console.append("Error: " + e.getMessage());
             }
@@ -240,6 +245,7 @@ public class GUIFrame extends JFrame {
             try {
                 Files.writeString(selected.toPath(), editor.getCode());
                 console.append("Saved: " + selected.getName());
+                this.setTitle(name + ": " + selected.getName());
             } catch (Exception e) {
                 console.append("Error: " + e.getMessage());
             }
@@ -254,7 +260,7 @@ public class GUIFrame extends JFrame {
         JScrollPane scrollPane = new JScrollPane(helpPane);
         helpDialog.add(scrollPane);
         helpDialog.pack();
-        helpDialog.setLocation(this.getX() + this.getWidth(), this.getY());
+        helpDialog.setSize(500, 1000);
         helpDialog.setVisible(true);
     }
 
@@ -276,6 +282,9 @@ public class GUIFrame extends JFrame {
             } catch (NumberFormatException ex) {
                 resultLabel.setText("Invalid Numbers");
                 resultLabel.setForeground(Color.RED);
+            } catch (BadCodeException ex) {
+                resultLabel.setText("Invalid code: compilation failed.");
+                resultLabel.setForeground(Color.RED);
             }
         });
         dialog.add(new JLabel("From Line:"));
@@ -288,8 +297,10 @@ public class GUIFrame extends JFrame {
         dialog.setVisible(true);
     }
 
-    private int calculateOffset(int fromLine, int toLine) {
+    private int calculateOffset(int fromLine, int toLine) throws BadCodeException {
         String[] lines = editor.getCode().split("\n");
+        String code = getCleanCode(editor);
+        parser.parse(code);
         int offset = 0;
         if (fromLine < 1 || toLine < 1 || fromLine > lines.length || toLine > lines.length) {
             return 0;
@@ -318,6 +329,41 @@ public class GUIFrame extends JFrame {
             return 8;
         }
         return 4;
+    }
+
+    private void showByte() {
+        String code = getCleanCode(editor);
+        byte[] bytecode;
+        JDialog dialog = new JDialog(this, "Machine Code Viewer", false);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(500, 300);
+        JTextArea hexArea = new JTextArea();
+        hexArea.setEditable(false);
+        hexArea.setFont(new Font("Monospaced", java.awt.Font.PLAIN, 14));
+        hexArea.setMargin(new Insets(10, 10, 10, 10));
+        JScrollPane scrollPane = new JScrollPane(hexArea);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+        try {
+            bytecode = parser.parse(code);
+            String formattedHex = formatBytesToHex(bytecode);
+            hexArea.setText(formattedHex);
+        } catch (BadCodeException e) {
+            hexArea.setText("Code compilation failed starting at line @" + e.getErrLine());
+        }
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private String formatBytesToHex(byte[] data) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < data.length; i++) {
+            sb.append(String.format("%02X", data[i]));
+            sb.append(" ");
+            if ((i + 1) % 16 == 0) { // new line every 16 bytes
+                sb.append("\n");
+            }
+        }
+        return sb.toString();
     }
 
     private void redirectSystemOut() {

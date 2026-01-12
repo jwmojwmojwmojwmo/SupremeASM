@@ -20,7 +20,7 @@ public class ConsolePanel extends JPanel {
         console.setFont(new Font("Monospaced", Font.BOLD, 14));
         JScrollPane scrollPane = new JScrollPane(console);
         add(scrollPane, BorderLayout.CENTER);
-        console.setText("> Welcome to SupremeIDE v0.1");
+        console.setText("> Welcome to SupremeIDE v1.0");
         updateCaretAndPosition();
         console.setEditable(true);
         console.addKeyListener(new KeyAdapter() {
@@ -75,7 +75,6 @@ public class ConsolePanel extends JPanel {
         });
     }
 
-    // The Magic Method: Checks "Where am I?" and acts accordingly
     private void safeUpdate(Runnable action) {
         if (SwingUtilities.isEventDispatchThread()) {
             action.run();

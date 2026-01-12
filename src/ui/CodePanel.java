@@ -21,7 +21,6 @@ public class CodePanel extends JPanel {
         RTextScrollPane scrollPane = new RTextScrollPane(codeArea);
         scrollPane.setFoldIndicatorEnabled(true);
         add(scrollPane, BorderLayout.CENTER);
-        codeArea.setText("test");
     }
 
     public String getCode() {

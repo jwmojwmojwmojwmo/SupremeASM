@@ -42,9 +42,11 @@ public class InputParser {
         for (int i = 0; i < instructions.length; i++) {
             try {
                 machineCode.append(translate(instructions[i]));
-            } catch (Exception e) {
-                System.out.println("Code compilation failed at line @" + (i + 1));
+            } catch (IOException e) {
+                System.out.println("File at line @" + (i + 1) + " was not found!");
                 throw new BadCodeException();
+            } catch (Exception e) {
+                throw new BadCodeException(i + 1);
             }
         }
         return machineCode.toString();
@@ -181,6 +183,15 @@ public class InputParser {
                     path = Path.of("scripts", insParts[1]);
                 }
                 String code = Files.readString(path);
+                StringBuilder cleanCode = new StringBuilder();
+                String[] lines = code.split("\n");
+                for (String line : lines) {
+                    if (line.contains("//")) {
+                        line = line.substring(0, line.indexOf("//"));
+                    }
+                    cleanCode.append(line).append("\n");
+                }
+                code = cleanCode.toString();
                 yield parseAssembly(code);
             }
             default -> throw new BadCodeException();

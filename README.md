@@ -39,6 +39,7 @@ There are also special purpose registers.
 
 PC holds the address of the next instruction to execute, not the current instruction being executed. Remember one memory slot is equal to four bytes, and incrementing PC is moving it one memory slot ahead, or 4 bytes ahead. Effectively, this means that to skip ahead by one instruction, you need only to increment PC once or twice, if the instruction is a four or eight byte instruction, respectively.
 
+The stack grows downwards, and the stack pointer initially points to the lowest address in the stack. Push increments the pointer and pop decrements the pointer. No bounds checking exists for the stack.
 
 r0 recieves return values for all instructions. Most instructions return either 1 for success or -1 for fail. Special cases:
 - memory allocation instruction returns address of first memory slot in the allocated memory block
