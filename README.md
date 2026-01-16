@@ -31,23 +31,23 @@ In ASM, the "%" symbol can be used to denote a register. For example, "ld #3, 1;
 
 The CPU has ten general purpose registers, from r0 - r9, to use. 
 
+r0 recieves return values for all instructions. Most instructions return either 1 for success or -1 for fail. Special cases:
+- memory allocation instruction returns address of first memory slot in the allocated memory block
+- memory defragment instruction returns number of blocks defragmented (coalesced together)
+- get user input instruction returns the user's input
+- halt returns 0, which tells the CPU to end execution
+
+Note this means that if you want to use the returned value of an instruction, you must move it to another register, as it will be overwritten in r0 once the next instruction completes.
+
 
 There are also special purpose registers.
  - One inaccessible register, PC, serves as the program counter. Its value can only be obtained with the gpc instruction.
  - One special, accessible register, rA (aka r10 in base 10), serves as the stack pointer. It must be referenced with the hex digit "a" in machine code. In ASM code, it can also be referenced as "%sp", ex. ld %sp+#-1, 1; or ld a+#-1, 1;
 
-
 PC holds the address of the next instruction to execute, not the current instruction being executed. Remember one memory slot is equal to four bytes, and incrementing PC is moving it one memory slot ahead, or 4 bytes ahead. Effectively, this means that to skip ahead by one instruction, you need only to increment PC once or twice, if the instruction is a four or eight byte instruction, respectively.
 
-The stack grows downwards, and the stack pointer initially points to the lowest address in the stack. Push increments the pointer and pop decrements the pointer. No bounds checking exists for the stack.
+The stack grows downwards, and the stack pointer should initially point to the smallest address in the stack. Push increments the pointer and pop decrements the pointer. Assuming the stack is correctly initialised and the stack pointer is at the top of the stack, there is an instruction that sets bounds for the stack, which is unique to the stack pointer.
 
-r0 recieves return values for all instructions. Most instructions return either 1 for success or -1 for fail. Special cases:
-- memory allocation instruction returns address of first memory slot in the allocated memory block
- - memory defragment instruction returns number of blocks defragmented (coalesced together)
- - get user input instruction returns the user's input
-- halt returns 0, which tells the CPU to end execution
-
-Note this means that if you want to use the returned value of an instruction, you must move it to another register, as it will be overwritten in r0 once the next instruction completes.
 
 ## ISA:
 
@@ -79,7 +79,8 @@ Note this means that if you want to use the returned value of an instruction, yo
 | print register value in terminal with ascii conversion                                                                                                                                                                    | printWithFormatting(r[r])                                                                | e30r----                                                                                                                                                                                                  | prf r                                                                                                                |
 | print memory value with base + offset in terminal with ascii conversion                                                                                                                                                   | printWithFormatting(m[r[r] + o])                                                         | e4r-oooo                                                                                                                                                                                                  | prf r+o                                                                                                              |
 | print indexed memory value with ascii conversion                                                                                                                                                                          | printWithFormatting (m[r[r]+r[o]])                                                       | e5ro----                                                                                                                                                                                                  | prf r+#o                                                                                                             | 
-| allocate a memory block with x memory slots (x*4 bytes)                                                                                                                                                                   | malloc(x*4)                                                                              | f1ee----xxxxxxxx                                                                                                                                                                                          | moc #x                                                                                                               |                
+| allocate a memory block with x memory slots (x*4 bytes)                                                                                                                                                                   | malloc(x*4)                                                                              | f1ee----xxxxxxxx                                                                                                                                                                                          | moc #x                                                                                                               |   
+| sets bounds for stack pointer assuming it is currently at the top of the stack and memory is initialised properly                                                                                                         | setBounds()                                                                              | f1-a----                                                                                                                                                                                                  | initsp                                                                                                               |
 | deallocate the memory block with address stored in register                                                                                                                                                               | free(r[r])                                                                               | f20r----                                                                                                                                                                                                  | free r                                                                                                               |
 | defragment memory (tries to coalesce all memory blocks by iterating over the entire memory until all possible blocks are coalesced. this may take a while if memory is too fragmented)                                    | defrag()                                                                                 | f3------                                                                                                                                                                                                  | dfg                                                                                                                  |
 | get user input. input is parsed as a base 10 int, or a base 16 int if prefixed with "0x". If both of these parsing methods fail, it will take the first character of the input and parse it into its ASCII character code | getInput()                                                                               | f4------                                                                                                                                                                                                  | inp                                                                                                                  |
@@ -119,4 +120,4 @@ ld #1, %1; ld #11, %2; ld #10, %9; mov %1, %3; sub %2, %3; ife %3, #5; prt %1; p
 ld #110, 9; ld #32, 8; ld #0, 1; ld #1, 2; prf 9; prf 8; inp; mov 0, 8; igt 2, 8, #7; dec 8; ife 8, #7; mov 2, 3; add 1, 2; mov 3, 1; dec 8; jmp #-6; prt 1; halt; prt 2; halt;
 
 ### Calculate n! recursively, using the stack for function calls (note this only works up to 12! due to integer overflow):
-ld #110, 1; ld #32, 2; prf 1; prf 2; inp; mov 0, 1; push 1; gpc 6, #1; jmp #4; prt 9; pop 0; halt; push 6; ld %sp+#-1, 2; ld #2, 1; igt 1, 2, #10; dec 2; push 2; gpc 6, #1; jmp #-11; pop 0; ld %sp+#-1, 2; mul 2, 9; jmp #2; ld #1, 9; pop 6; goto 6;
+moc #1024; mov 0, a; initsp; ld #110, 1; ld #32, 2; prf 1; prf 2; inp; mov 0, 1; push 1; gpc 6, #1; jmp #4; prt 9; pop 0; halt; push 6; ld a+#-1, 2; ld #2, 1; igt 1, 2, #10; dec 2; push 2; gpc 6, #1; jmp #-11; pop 0; ld a+#-1, 2; mul 2, 9; jmp #2; ld #1, 9; pop 6; goto 6;

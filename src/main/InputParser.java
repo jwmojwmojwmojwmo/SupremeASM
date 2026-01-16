@@ -61,7 +61,7 @@ public class InputParser {
             case "inc", "dec", "add", "not", "and", "shf", "mul", "div", "mod", "sub" -> translateArithmetic(insParts);
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
-            case "moc", "free", "push", "pop", "call" -> translateSystem(insParts);
+            case "moc", "free", "initsp", "push", "pop", "call" -> translateSystem(insParts);
             case "dfg" -> "f3ffffff";
             case "inp" -> "f4ffffff";
             case "dpc" -> "fdffffff";
@@ -73,6 +73,7 @@ public class InputParser {
     }
 
     private String translateLoad(String[] insParts) {
+        //TODO allow loading chars
         String instruction;
         if (insParts[1].contains("+")) {
             if (insParts[1].contains("#")) {
@@ -177,6 +178,7 @@ public class InputParser {
             case "free" -> "f20" + insParts[1] + "ffff";
             case "push" -> parseAssembly("inc a; st " + insParts[1] + ", a+#0");
             case "pop" -> parseAssembly("ld a+#0, " + insParts[1] + "; dec a");
+            case "initsp" -> "f1faffff";
             case "call" -> {
                 Path path = Path.of(insParts[1]);
                 if (!(Files.exists(path))) {

@@ -10,7 +10,7 @@ public class CPU {
     public volatile boolean isRunning;
     // insEnd is EXCLUSIVE. instructions go to insEnd - 1
     private int insEnd;
-
+    
     public CPU() {
         regs = new Register[]{new Register(), new Register(), new Register(), new Register(), new Register(),
                 new Register(), new Register(), new Register(), new Register(), new Register(), new SP()};
@@ -36,7 +36,6 @@ public class CPU {
     public void run() {
         int firstIns;
         isRunning = true;
-        regs[10].write(mem.requestMemoryBlock(2048)); // initialise stack pointer
         while (pc.read() <= insEnd) {
             firstIns = mem.read(pc.read() - 1);
             try {
@@ -53,6 +52,8 @@ public class CPU {
             }
             if (regs[0].read() == -1) {
                 System.out.println("segfault triggered at instruction @" + (pc.read() - 1));
+                System.out.println("Machine code representation at instruction location is as follows: " +
+                        Integer.toHexString(mem.read(pc.read() - 1)));
             }
             if (!isRunning) {
                 return;
@@ -149,6 +150,7 @@ public class CPU {
             case 0xF:
                 return switch (insNum0) {
                     case 0 -> 1;
+                    case 1 -> setBounds();
                     case 2 -> deallocateMemory(insNum2);
                     case 3 -> mem.defragmentMemory();
                     case 4 -> getUserInput();
@@ -192,22 +194,19 @@ public class CPU {
 
     // ld $v, reg1
     private int loadValue(int value, int register) {
-        regs[register].write(value);
-        return 1;
+        return regs[register].write(value);
     }
 
     // ld offset(reg1), reg2
     private int loadMemory(short offset, int reg1, int reg2) {
         int address = regs[reg1].read() + offset;
-        regs[reg2].write(mem.read(address));
-        return 1;
+        return regs[reg2].write(mem.read(address));
     }
 
     // ld (reg1 + rego), reg2
     private int loadMemoryIndexed(int rego, int reg1, int reg2) {
         int address = regs[reg1].read() + regs[rego].read();
-        regs[reg2].write(mem.read(address));
-        return 1;
+        return regs[reg2].write(mem.read(address));
     }
 
     // st reg1, offset(reg2)
@@ -226,78 +225,67 @@ public class CPU {
 
     // mov reg1, reg2
     private int move(int reg1, int reg2) {
-        regs[reg2].write(regs[reg1].read());
-        return 1;
+        return regs[reg2].write(regs[reg1].read());
     }
 
     // inc register
     private int increment(int register) {
-        regs[register].write(regs[register].read() + 1);
-        return 1;
+        return regs[register].write(regs[register].read() + 1);
     }
 
     // dec register
     private int decrement(int register) {
-        regs[register].write(regs[register].read() - 1);
-        return 1;
+        return regs[register].write(regs[register].read() - 1);
     }
 
     // add reg1, reg2
     private int add(int reg1, int reg2) {
-        regs[reg2].write(regs[reg1].read() + regs[reg2].read());
-        return 1;
+        return regs[reg2].write(regs[reg1].read() + regs[reg2].read());
     }
 
     // not register
     private int not(int register) {
-        regs[register].write(~regs[register].read());
-        return 1;
+        return regs[register].write(~regs[register].read());
     }
 
     // and reg1, reg2
     private int and(int reg1, int reg2) {
-        regs[reg2].write(regs[reg1].read() & regs[reg2].read());
-        return 1;
+        return regs[reg2].write(regs[reg1].read() & regs[reg2].read());
     }
 
     // shl/shr $v, register
     private int shift(int register, byte shift) {
         if (shift < 0) {
-            regs[register].write(regs[register].read() >> -shift);
+            return regs[register].write(regs[register].read() >> -shift);
         } else {
-            regs[register].write(regs[register].read() << shift);
+            return regs[register].write(regs[register].read() << shift);
         }
-        return 1;
     }
 
     // multiply reg1, reg2
     private int multiply(int reg1, int reg2) {
-        regs[reg2].write(regs[reg1].read() * regs[reg2].read());
-        return 1;
+        return regs[reg2].write(regs[reg1].read() * regs[reg2].read());
     }
 
     // divide reg1, reg2
     private int divide(int reg1, int reg2) {
-        regs[reg2].write(regs[reg1].read() / regs[reg2].read());
-        return 1;
+        return regs[reg2].write(regs[reg1].read() / regs[reg2].read());
     }
 
     // modulus reg1, reg2
     private int modulus(int reg1, int reg2) {
-        regs[reg2].write(regs[reg1].read() % regs[reg2].read());
-        return 1;
+        return regs[reg2].write(regs[reg1].read() % regs[reg2].read());
     }
 
     // j $o
     private int indirectJump(short offset) {
-        pc.write(pc.read() + offset);
-        return 1;
+        return pc.write(pc.read() + offset);
     }
 
     // j $o if reg == 0
     private int ifEqualIndirectJump(short offset, int register) {
         if (regs[register].read() == 0) {
-            pc.write(pc.read() + offset);
+            return pc.write(pc.read() + offset);
         }
         return 1;
     }
@@ -305,20 +293,18 @@ public class CPU {
     // j $o if reg1 > reg2
     private int ifGreaterIndirectJump(short offset, int reg1, int reg2) {
         if (regs[reg1].read() > regs[reg2].read()) {
-            pc.write(pc.read() + offset);
+            return pc.write(pc.read() + offset);
         }
         return 1;
     }
 
     private int getProgramCounter(short offset, int register) {
-        regs[register].write(pc.read() + offset);
-        return 1;
+        return regs[register].write(pc.read() + offset);
     }
 
     // goto register
     private int directJump(int register) {
-        pc.write(regs[register].read());
-        return 1;
+        return pc.write(regs[register].read());
     }
 
     private int logRegister(int register) {
@@ -373,6 +359,13 @@ public class CPU {
         } catch (Exception e) {
             return input.charAt(0);
         }
+    }
+
+    private int setBounds() {
+        int size = mem.read(regs[10].read() - 1);
+        SP sp = (SP) regs[10];
+        sp.setBounds(size);
+        return 1;
     }
 
     private int dump() {

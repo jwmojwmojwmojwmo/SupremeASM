@@ -120,7 +120,7 @@ public class MainMemory {
     }
 
     // returns address of the footer of that block given the address of its header
-    private int getFooter(int header) {
+    public int getFooter(int header) {
         return header + memory[header] + 1;
     }
 }

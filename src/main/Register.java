@@ -11,7 +11,8 @@ public class Register {
         return value;
     }
 
-    public void write(int value) {
+    public int write(int value) {
         this.value = value;
+        return 1;
     }
 }

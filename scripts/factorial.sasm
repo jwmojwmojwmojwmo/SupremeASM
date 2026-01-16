@@ -1,0 +1,46 @@
+// in this program, the return value(s) are stored in r9
+moc #1024; // malloc space for sp
+mov %0, %sp; // set sp to top of malloced memory
+initsp; // sets bounds
+ld #110, %1; // ascii code for "n"
+ld #32, %2; // ascii code for " "
+prf %1; // prints "n"
+prf %2; // prints " "
+inp; // waits for user input
+mov %0, %1; // moves user input (n) into r1
+push %1; // pushes r1 (n) onto stack
+gpc %6, #1; // gets address of instruction right after jump, or line 11 (return address)
+jmp #4; // jumps to loop (main recursive function) @ line 14
+prt %9; // prints result (r9 is the register holding the return value)
+pop %0; // pops n off the stack (not strictly necessary as the code halts right after)
+halt;
+push %6; // initial jump lands here, pushes r6 (return address) onto stack
+ld %sp+#-1, %2; // loads n from the stack into r2
+ld #2, %1; // loads 2 into r1
+igt %1, %2, #10; // if n < 2, jump to end of loop @ line 26
+dec %2; // r2 = n - 1
+push %2; // pushes n - 1 onto stack
+gpc %6, #1; // gets address of instruction right after jump (return address)
+jmp #-11; // jumps back to where initial jump lands @ line 14 (essentially calling itself)
+pop %0; // pops n - 1 off the stack
+ld %sp+#-1, 2; // loads n from the stack
+mul %2, %9; // r9 = n * r9 (r9 is the register holding the return value, so this is effectively n * factorial(n-1))
+jmp #2; // skip code that runs if n < 2
+ld #1, %9; // r9 holds the return value so this is effectively returning 1
+pop %6; // pops return address off stack
+goto %6; // jumps back to return address
+
+// this program translated to pseudocode is approximately speaking: 
+// main() { 
+//	print("n "); 
+//	int n = userInput.nextLine();
+//	print(factorial(n));
+// }
+//
+// factorial(int n) {
+//	if (n < 2) {
+//		return 1;
+//	else {
+//		return n * factorial(n-1);
+// 	}
+// }
