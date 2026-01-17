@@ -1,5 +1,5 @@
 package main;
-// Represents all 64kb of memory in the system
+// Represents all 1 MB of memory in the system
 // The MainMemory class handles all mainmemory methods and assigns memory to the cpu accordingly
 // MainMemory will act as a heap in this implementation
 // MainMemory stores data as 4 byte "slots"
@@ -7,7 +7,7 @@ package main;
 public class MainMemory {
     private static MainMemory mainMemory;
     private final int[] memory;
-    private final int maxMemory = 16384;
+    private final int maxMemory = 262144;
 
     private MainMemory() {
         memory = new int[maxMemory];

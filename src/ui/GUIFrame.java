@@ -53,7 +53,7 @@ public class GUIFrame extends JFrame {
             "<h2>Instruction Set Architecture (ISA)</h2>" +
             "<table>" +
             "  <tr><th>Operation</th><th>ASM Code</th><th>Format/Semantics</th><th>Size</th></tr>" +
-            "  <tr><td>Load Immediate</td><td><code>ld #v, r</code></td><td>v -> r[r]</td><td class='size-col'>8</td></tr>" +
+            "  <tr><td>Load Immediate</td><td><code>ld #v, r</code> or <code>ld \"c\", r</code></td><td>v -> r[r]</td><td class='size-col'>8</td></tr>" +
             "  <tr><td>Load Base+Off</td><td><code>ld r+#o, s</code></td><td>m[r[r] + o] -> r[s]</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Load Indexed</td><td><code>ld r+o, s</code></td><td>m[r[r] + r[o]] -> r[s]</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Store Base+Off</td><td><code>st r, s+#o</code></td><td>r[r] -> m[r[s] + o]</td><td class='size-col'>4</td></tr>" +
@@ -77,17 +77,20 @@ public class GUIFrame extends JFrame {
             "  <tr><td>Print (Int)</td><td><code>prt r</code></td><td>Print Register (Base 10)</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Print Mem (Off)</td><td><code>prt r+#o</code></td><td>Print m[r[r]+o]</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Print Mem (Idx)</td><td><code>prt r+o</code></td><td>Print m[r[r]+r[o]]</td><td class='size-col'>4</td></tr>" +
-            "  <tr><td>Print ASCII</td><td><code>prf r</code></td><td>Print as Char (formatting)</td><td class='size-col'>4</td></tr>" +
-            "  <tr><td>Print ASCII Mem</td><td><code>prf r+#o</code></td><td>Print Mem as Char</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print formatted (ASCII) </td><td><code>prf r</code></td><td>Print as Char (formatting)</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print formatted (ASCII) Mem</td><td><code>prf r+#o</code></td><td>Print Mem as Char</td><td class='size-col'>4</td></tr>" +
+            "  <tr><td>Print formatted (ASCII) Mem (Idx)</td><td><code>prf r+o</code></td><td>Print m[r[r]+r[o]] as Char </td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Input</td><td><code>inp</code></td><td>User Input -> r0</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Dump CPU</td><td><code>dpc</code></td><td>Print all Registers</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Dump Mem</td><td><code>dpm</code></td><td>Print non-zero Mem</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Malloc</td><td><code>moc #x</code></td><td>Allocate x slots (x*4 bytes)</td><td class='size-col'>8</td></tr>" +
+            "  <tr><td>Set Stack Pointer Bounds</td><td><code>initsp</code></td><td>Sets stack pointer bounds (only if %sp is currently at top of stack and stack has been malloc'd properly)</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Free</td><td><code>free r</code></td><td>Deallocate block at r</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Defrag</td><td><code>dfg</code></td><td>Coalesce memory blocks</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Push</td><td><code>push r</code></td><td>Macro: inc sp, st r, sp</td><td class='size-col'>8</td></tr>" +
             "  <tr><td>Pop</td><td><code>pop r</code></td><td>Macro: ld sp, r, dec sp</td><td class='size-col'>8</td></tr>" +
             "  <tr><td>Call</td><td><code>call file.sasm</code></td><td>Include file inline</td><td class='size-col'>Var</td></tr>" +
+            "  <tr><td>Import</td><td><code>import lib.sasm</code></td><td>Import library's custom instructions</td><td class='size-col'>0</td></tr>" +
             "  <tr><td>No Op</td><td><code>nop</code></td><td>Do nothing</td><td class='size-col'>4</td></tr>" +
             "  <tr><td>Halt</td><td><code>halt</code></td><td>Stop Execution (returns 0)</td><td class='size-col'>4</td></tr>" +
             "</table>" +
@@ -176,7 +179,7 @@ public class GUIFrame extends JFrame {
             } catch (ArrayIndexOutOfBoundsException e) {
                 console.append("Memory limit reached! Execution stopped.");
             } catch (Exception e) {
-                console.append("Code fatally failed or a sysfault was triggered, with error code:");
+                console.append("Code fatally failed or a sysfault was triggered, with error:");
                 console.append(String.valueOf(e));
             } finally {
                 if (manuallyStopped) {
@@ -265,6 +268,7 @@ public class GUIFrame extends JFrame {
     }
 
     private void calculate() {
+        //TODO use parser for calculation
         JDialog dialog = new JDialog(this, "Jump Calculator");
         dialog.setLayout(new FlowLayout());
         dialog.setSize(300, 150);
@@ -325,7 +329,7 @@ public class GUIFrame extends JFrame {
         if (line.startsWith("sub")) {
             return 12;
         }
-        if (line.startsWith("ld #") || line.startsWith("moc #") || line.startsWith("push") || line.startsWith("pop")) {
+        if (line.startsWith("ld #") || line.startsWith("ld \"") || line.startsWith("moc #") || line.startsWith("push") || line.startsWith("pop")) {
             return 8;
         }
         return 4;
@@ -336,13 +340,16 @@ public class GUIFrame extends JFrame {
         byte[] bytecode;
         JDialog dialog = new JDialog(this, "Machine Code Viewer", false);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(500, 300);
+        dialog.setSize(460, 300);
         JTextArea hexArea = new JTextArea();
+        hexArea.setText("Compiling...");
         hexArea.setEditable(false);
         hexArea.setFont(new Font("Monospaced", java.awt.Font.PLAIN, 14));
         hexArea.setMargin(new Insets(10, 10, 10, 10));
         JScrollPane scrollPane = new JScrollPane(hexArea);
         dialog.add(scrollPane, BorderLayout.CENTER);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
         try {
             bytecode = parser.parse(code);
             String formattedHex = formatBytesToHex(bytecode);
@@ -350,8 +357,7 @@ public class GUIFrame extends JFrame {
         } catch (BadCodeException e) {
             hexArea.setText("Code compilation failed starting at line @" + e.getErrLine());
         }
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+
     }
 
     private String formatBytesToHex(byte[] data) {

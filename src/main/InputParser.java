@@ -5,21 +5,26 @@ import exceptions.BadCodeException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 
 public class InputParser {
+    private ArrayList<Library> libs;
+
     public InputParser() {
     }
 
     public byte[] parse(String input) throws BadCodeException {
-        try {
-            if (Character.isDigit(input.charAt(0))) {
-                return parseMachine(input);
-            } else {
-                return parseMachine(parseAssembly(input));
-            }
-        } catch (Exception e) {
-            throw new BadCodeException();
+        libs = new ArrayList<>();
+        if (Character.isDigit(input.charAt(0))) {
+            return parseMachine(input);
+        } else {
+            return parseMachine(parseAssembly(input));
         }
+    }
+
+    public ArrayList<Library> getLibraries(String input) throws BadCodeException {
+        parseAssembly(input);
+        return libs;
     }
 
     // returns CPU readable instructions from machine code
@@ -37,6 +42,10 @@ public class InputParser {
 
     // returns machine code from assembly
     private String parseAssembly(String input) throws BadCodeException {
+         // 1. check imports and store paths in list
+        // 2. foreach path, get defined funcs and store in list of maps, where each element contains all defs + line of def, and name of import
+        // 3. default -> if map contains instruction, go to library handler and pass name of import, instruction, and line of definition
+        // 4. library handler returns machine code interpretation of definition, continue.
         String[] instructions = input.trim().replaceAll("%sp", "a").split("\\s*;\\s*");
         StringBuilder machineCode = new StringBuilder();
         for (int i = 0; i < instructions.length; i++) {
@@ -62,18 +71,18 @@ public class InputParser {
             case "jmp", "ife", "igt", "gpc", "goto" -> translateControl(insParts);
             case "prt", "prf" -> translatePrint(insParts);
             case "moc", "free", "initsp", "push", "pop", "call" -> translateSystem(insParts);
+            case "import" -> translateImport(insParts);
             case "dfg" -> "f3ffffff";
             case "inp" -> "f4ffffff";
             case "dpc" -> "fdffffff";
             case "dpm" -> "feffffff";
             case "nop" -> "f0ffffff";
             case "halt" -> "ffffffff";
-            default -> throw new BadCodeException();
+            default -> handleLibFunc(insParts);
         };
     }
 
     private String translateLoad(String[] insParts) {
-        //TODO allow loading chars
         String instruction;
         if (insParts[1].contains("+")) {
             if (insParts[1].contains("#")) {
@@ -82,6 +91,20 @@ public class InputParser {
                 instruction = "01" + insParts[1].charAt(0) + insParts[1].charAt(2) + insParts[2] + "fff";
             }
         } else {
+            if (insParts[1].contains("\"")) {
+                char c = insParts[1].charAt(1);
+                if (c == '\\') {
+                    c = switch (insParts[1].charAt(2)) {
+                        case 'n' -> '\n'; // Newline
+                        case 't' -> '\t'; // Tab
+                        case 'r' -> '\r'; // Carriage Return
+                        case '0' -> '\0'; // Null
+                        case '\\' -> '\\'; // Backslash
+                        default -> insParts[1].charAt(2);
+                    };
+                }
+                insParts[1] = " " + (int) c;
+            }
             instruction = "0" + insParts[2] + "eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
         }
         return instruction;
@@ -141,9 +164,12 @@ public class InputParser {
     private String translateControl(String[] insParts) throws BadCodeException {
         String instruction = switch (insParts[0]) {
             case "jmp" -> "a00f" + String.format("%04x", Integer.decode(insParts[1].substring(1)) & 0xFFFF);
-            case "ife" -> "a1" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
-            case "igt" -> "a2" + insParts[1] + insParts[2] + String.format("%04x", Integer.decode(insParts[3].substring(1)) & 0xFFFF);
-            case "gpc" -> "a3" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
+            case "ife" ->
+                    "a1" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
+            case "igt" ->
+                    "a2" + insParts[1] + insParts[2] + String.format("%04x", Integer.decode(insParts[3].substring(1)) & 0xFFFF);
+            case "gpc" ->
+                    "a3" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
             case "goto" -> "a4" + insParts[1] + "fffff";
             default -> throw new BadCodeException();
         };
@@ -155,7 +181,7 @@ public class InputParser {
         if (insParts[0].equals("prt")) {
             if (insParts[1].contains("#")) {
                 instruction = "e1" + insParts[1].charAt(0) + "f" + String.format("%04x", Integer.decode(insParts[1].substring(3)) & 0xFFFF);
-            } else if (insParts[1].contains("+")){
+            } else if (insParts[1].contains("+")) {
                 instruction = "e2" + insParts[1].charAt(0) + insParts[1].charAt(2) + "ffff";
             } else {
                 instruction = "e00" + insParts[1] + "ffff";
@@ -185,20 +211,42 @@ public class InputParser {
                     path = Path.of("scripts", insParts[1]);
                 }
                 String code = Files.readString(path);
-                StringBuilder cleanCode = new StringBuilder();
-                String[] lines = code.split("\n");
-                for (String line : lines) {
-                    if (line.contains("//")) {
-                        line = line.substring(0, line.indexOf("//"));
-                    }
-                    cleanCode.append(line).append("\n");
-                }
-                code = cleanCode.toString();
-                yield parseAssembly(code);
+                yield parseAssembly(getCleanCode(code));
             }
             default -> throw new BadCodeException();
         };
         return instruction;
+    }
+
+    private String translateImport(String[] insParts) throws IOException {
+        Path path = Path.of(insParts[1]);
+        if (!(Files.exists(path))) {
+            path = Path.of("scripts", insParts[1]);
+        }
+        libs.add(new Library(path));
+        return "";
+    }
+
+    private String handleLibFunc(String[] insParts) throws BadCodeException {
+        for (Library lib : libs) {
+            if (lib.containsFunc(insParts[0])) {
+                return parseAssembly(lib.call(insParts));
+            }
+        }
+        throw new ArrayIndexOutOfBoundsException();
+    }
+
+    private String getCleanCode(String code) {
+        StringBuilder cleanCode = new StringBuilder();
+        String[] lines = code.split("\n");
+        for (String line : lines) {
+            if (line.contains("//")) {
+                line = line.substring(0, line.indexOf("//"));
+            }
+            cleanCode.append(line).append("\n");
+        }
+        code = cleanCode.toString();
+        return code;
     }
 }
 
