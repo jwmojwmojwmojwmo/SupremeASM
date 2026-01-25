@@ -6,6 +6,9 @@ A assembly/machine code like language made by jwmo in Java for learning purposes
 Development in progress.
 
 
+<img width="1000" height="1000" alt="image" src="https://github.com/user-attachments/assets/f24b080d-4918-4c87-ac04-6e63b68dafd8" />
+
+
 ## Language Rules
 
 Instructions are 4/8 bytes and written in hex. However, print instructions will print in base 10.
