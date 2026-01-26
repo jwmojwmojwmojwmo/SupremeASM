@@ -83,6 +83,7 @@ See the given "str_lib.sasm" file for more examples. This library imports variou
 To use a library, use:
 
 import str.sasm <- must be at the top of the program
+
 import str_lib.sasm <- subsequent imports must be defined together at the top of the program
 
 Then, call the function (ex: str a, b, c;)
