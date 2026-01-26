@@ -14,7 +14,7 @@ Development in progress.
 Instructions are 4/8 bytes and written in hex. However, print instructions will print in base 10.
 
 
-Anything in memory is stored as ints (4 bytes). One memory slot is equal to 4 bytes, and each memory address holds 4 bytes of information. Memory is allocated by the compiler implicitly for instructions and the stack. Memory should be explicitly allocated by instructions to store any data, and deallocated if needed. (However, there is nothing stopping one from hardcoding a memory address to use without allocating it)
+Anything in memory is stored as ints (4 bytes). One memory slot is equal to 4 bytes, and each memory address holds 4 bytes of information. Memory is allocated by the compiler implicitly for instructions. Memory should be explicitly allocated by instructions for the stack and to store any data, and deallocated if needed. (However, there is nothing stopping one from hardcoding a memory address to use without allocating it. Be prepared to face the consequences though.)
  
  
 Memory is allocated as blocks, and can only be deallocated block by block. 

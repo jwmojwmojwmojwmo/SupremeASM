@@ -1,3 +1,32 @@
+// str_lib.sasm: a library that contains basic functionality for an implementation of strings
+// GENERAL CONSTRAINTS: stack must be initialised with size at least 8 memory slots
+
+// defined functions: 
+
+// str_init_8, reg_to_mem_location, s1, s2, s3, s4, s5, s6, s7, s8; 
+// -> creates an 8 character string in memory starting at address in reg_to_mem_location
+
+// def str_init_16, reg_to_mem_location, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16
+// -> creates an 8 character string in memory starting at address in reg_to_mem_location
+
+// def str_terminate, reg_to_mem_location, size;
+// -> terminates a string by adding a null character ("\0") to the end of the string starting at address in reg_to_mem_location with length size
+
+// def str_length, reg_to_mem_location, return_reg;
+// -> returns length of string starting at address in reg_to_mem_location, storing the value into return_reg
+// CONSTRAINT: return_reg must not be r1
+
+// def str_prf, reg_to_mem_location;
+// -> prints the entire string located starting at address in reg_to_mem_location
+
+// def str_copy, reg_to_mem_location, reg_to_other_location;
+// -> copies a null-terminated string from address in reg_to_mem_location to address in reg_to_other_location
+
+// def str_compare, reg_to_str1, reg_to_str2, return_reg;
+// -> returns 0 if strings at reg_to_str1 and reg_to_str2 are the same, < 0 if reg_to_str1 is alphabetically ahead of reg_to_str2, > 0 otherwise
+// CONSTRAINT: return_reg must not be r1
+
+// creates an 8 character string in memory starting at address in reg_to_mem_location
 def str_init_8, reg_to_mem_location, s1, s2, s3, s4, s5, s6, s7, s8;
 push 1;
 push 2;
@@ -22,7 +51,7 @@ st 1, 2+#7;
 pop 2;
 pop 1;
 enddef;
-
+// creates a 16 character string in memory starting at address in reg_to_mem_location
 def str_init_16, reg_to_mem_location, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16;
 push 1;
 push 2;
@@ -63,7 +92,7 @@ st 1, 2+#15;
 pop 2;
 pop 1;
 enddef;
-
+// terminates a string by adding a null character ("\0") to the end of the string starting at address in reg_to_mem_location with length size
 def str_terminate, reg_to_mem_location, size;
 push 1;
 push 2;
@@ -74,26 +103,28 @@ st 1, 2+#size;
 pop 2;
 pop 1;
 enddef;
-
-//CONSTRAINT: reg_to_store_length should not be r2, r3, or r4
-def str_length, reg_to_mem_location, reg_to_store_length;
+// returns length of string starting at address in reg_to_mem_location, storing the value into reg_to_store_length
+//CONSTRAINT: return_reg must not be r1
+def str_length, reg_to_mem_location, return_reg;
+push 1;
 push 2;
 push 3;
 push 4;
 push reg_to_mem_location;
 pop 4;
 ld "\0", 2;
-ld #0, reg_to_store_length;
-ld 4+reg_to_store_length, 3;
+ld #0, 1;
+ld 4+1, 3;
 ife 3, 2, #2;
-inc reg_to_store_length;
+inc 1;
 jmp #-4;
 pop 4;
 pop 3;
 pop 2;
+mov 1, return_reg;
+pop 1;
 enddef;
-
-
+// prints the entire string located starting at address in reg_to_mem_location
 def str_prf, reg_to_mem_location;
 push 1;
 push 2;
@@ -111,5 +142,63 @@ jmp #-5;
 pop 9;
 pop 3;
 pop 2;
+pop 1;
+enddef;
+// copies a null-terminated string from address in reg_to_mem_location to address in reg_to_other_location
+def str_copy, reg_to_mem_location, reg_to_other_location;
+push 1;
+push 2;
+push 3;
+push 4;
+push 5;
+push reg_to_mem_location;
+pop 1;
+push reg_to_other_location;
+pop 2;
+ld #0, 3;
+ld "\0", 5;
+ld 1+3, 4;
+ife 4, 5, #3;
+st 4, 2+3;
+inc 3;
+jmp #-5;
+st 5, 2+3;
+pop 5;
+pop 4;
+pop 3;
+pop 2;
+pop 1;
+enddef;
+// -> returns 0 if strings at reg_to_str1 and reg_to_str2 are the same, < 0 if reg_to_str1 is alphabetically ahead of reg_to_str2, > 0 otherwise
+// CONSTRAINT: return_reg must not be r1
+def str_compare, reg_to_str1, reg_to_str2, return_reg;
+push 1;
+push 2;
+push 3;
+push 4;
+push 5;
+push 6;
+push reg_to_str1;
+pop 1;
+push reg_to_str2;
+pop 2;
+ld #0, 3;
+ld "\0", 5;
+ld 1+3, 4;
+ld 2+3, 6;
+ife 4, 6, #5;
+sub 4, 6;
+mov 6, 1;
+jmp #5;
+ife 4, 5, #2;
+inc 3;
+jmp #-11;
+ld #0, 1;
+pop 6;
+pop 5;
+pop 4; 
+pop 3;
+pop 2;
+mov 1, return_reg;
 pop 1;
 enddef;
