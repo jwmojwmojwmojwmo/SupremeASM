@@ -17,7 +17,8 @@ public class GUIFrame extends JFrame {
     private final InputParser parser;
     private Thread runThread;
     private boolean manuallyStopped = false;
-    private final String name = "SupremeIDE";
+    private final String NAME = "SupremeIDE";
+    private final int NEW_WINDOW_OFFSET = 25;
     private final String helpText = "<html>" +
             "<style>" +
             "  body { font-family: 'Segoe UI', sans-serif; font-size: 12px; margin: 10px; }" +
@@ -99,7 +100,7 @@ public class GUIFrame extends JFrame {
 
     public GUIFrame() {
         super();
-        setTitle(name);
+        setTitle(NAME);
         setSize(1200, 800);
         editor = new CodePanel();
         console = new ConsolePanel();
@@ -111,10 +112,31 @@ public class GUIFrame extends JFrame {
         cpu = new CPU();
     }
 
+    public GUIFrame(File file) throws IOException {
+        super();
+        setTitle(NAME);
+        setSize(1200, 800);
+        editor = new CodePanel();
+        console = new ConsolePanel();
+        createToolBar();
+        add(editor, BorderLayout.CENTER);
+        add(console, BorderLayout.SOUTH);
+        parser = new InputParser();
+        redirectSystemOut();
+        cpu = new CPU();
+        String code = Files.readString(file.toPath());
+        editor.setCode(code);
+        console.append("Loaded: " + file.getName());
+        this.setTitle(NAME + ": " + file.getName());
+    }
+
     private void createToolBar() {
         JToolBar toolbar = new JToolBar();
         toolbar.setFloatable(false);
         toolbar.setRollover(true);
+        JButton newBtn = new JButton("New");
+        newBtn.setToolTipText("Create a new window");
+        newBtn.addActionListener(e -> newFile());
         JButton saveBtn = new JButton("Save");
         saveBtn.setToolTipText("Save code to a file");
         saveBtn.addActionListener(e -> saveFile());
@@ -130,6 +152,9 @@ public class GUIFrame extends JFrame {
         JButton byteBtn = new JButton("See Bytecode");
         byteBtn.setToolTipText("Displays bytecode of current ASM program");
         byteBtn.addActionListener(e -> showByte());
+//        JButton resetBtn = new JButton("Resync I/O");
+//        resetBtn.setToolTipText("Resyncs input and output to current console if broken");
+//        resetBtn.addActionListener(e -> redirectSystemOut());
         JButton runBtn = new JButton("Run");
         runBtn.setToolTipText("Compile and Run");
         runBtn.setBackground(new Color(0, 150, 0));
@@ -143,6 +168,7 @@ public class GUIFrame extends JFrame {
         JButton clearBtn = new JButton("Clear");
         clearBtn.setToolTipText("Clear Console Output");
         clearBtn.addActionListener(e -> console.clear());
+        toolbar.add(newBtn);
         toolbar.add(saveBtn);
         toolbar.add(openBtn);
         toolbar.add(helpBtn);
@@ -161,12 +187,13 @@ public class GUIFrame extends JFrame {
         cpu.reset();
         manuallyStopped = false;
         redirectSystemIn();
+        redirectSystemOut();
         console.clear();
         runThread = new Thread(() -> {
             console.append("Compiling...");
             try {
                 long startTime = System.nanoTime();
-                String code = getCleanCode(editor);
+                String code = getCleanCode(editor.getCode());
                 byte[] instructions = parser.parse(code);
                 long endTime = System.nanoTime();
                 long durationNs = (endTime - startTime);  // Duration in nanoseconds
@@ -187,15 +214,15 @@ public class GUIFrame extends JFrame {
                 } else {
                     console.append("Execution completed.");
                 }
-                console.append(""); 
+                console.append("");
             }
         });
         runThread.start();
     }
 
-    private String getCleanCode(CodePanel editor) {
+    private String getCleanCode(String code) {
         StringBuilder cleanCode = new StringBuilder();
-        String[] lines = editor.getCode().split("\n");
+        String[] lines = code.split("\n");
         for (String line : lines) {
             if (line.contains("//")) {
                 line = line.substring(0, line.indexOf("//"));
@@ -213,6 +240,15 @@ public class GUIFrame extends JFrame {
         manuallyStopped = true;
     }
 
+    private void newFile() {
+        JFrame frame = new GUIFrame();
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.pack();
+        frame.setLocationRelativeTo(this);
+        frame.setLocation(frame.getX() + NEW_WINDOW_OFFSET, frame.getY() + NEW_WINDOW_OFFSET);
+        frame.setVisible(true);
+    }
+
     private void openFile() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setCurrentDirectory(new File("./scripts"));
@@ -223,10 +259,16 @@ public class GUIFrame extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION) {
             File selected = fileChooser.getSelectedFile();
             try {
-                String code = Files.readString(selected.toPath());
-                editor.setCode(code);
-                console.append("Loaded: " + selected.getName());
-                this.setTitle(name + ": " + selected.getName());
+                JFrame frame = new GUIFrame(selected);
+                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                frame.pack();
+                frame.setLocationRelativeTo(this);
+                frame.setLocation(frame.getX() + NEW_WINDOW_OFFSET, frame.getY() + NEW_WINDOW_OFFSET);
+                frame.setVisible(true);
+//                String code = Files.readString(selected.toPath());
+//                editor.setCode(code);
+//                console.append("Loaded: " + selected.getName());
+//                this.setTitle(name + ": " + selected.getName());
             } catch (Exception e) {
                 console.append("Error: " + e.getMessage());
             }
@@ -248,7 +290,7 @@ public class GUIFrame extends JFrame {
             try {
                 Files.writeString(selected.toPath(), editor.getCode());
                 console.append("Saved: " + selected.getName());
-                this.setTitle(name + ": " + selected.getName());
+                this.setTitle(NAME + ": " + selected.getName());
             } catch (Exception e) {
                 console.append("Error: " + e.getMessage());
             }
@@ -303,7 +345,7 @@ public class GUIFrame extends JFrame {
 
     private int calculateOffset(int fromLine, int toLine) throws BadCodeException {
         String[] lines = editor.getCode().split("\n");
-        String code = getCleanCode(editor);
+        String code = getCleanCode(editor.getCode());
         parser.parse(code);
         int offset = 0;
         if (fromLine < 1 || toLine < 1 || fromLine > lines.length || toLine > lines.length) {
@@ -312,31 +354,17 @@ public class GUIFrame extends JFrame {
         int start = Math.min(fromLine, toLine) - 1;
         int end = Math.max(fromLine, toLine) - 1;
         for (int i = start; i < end; i++) {
-            offset += getInstructionSize(lines[i]);
+            offset += parser.getSize(getCleanCode(lines[i]));
         }
         if (toLine < fromLine) {
             offset = -offset; // Jumping backwards
         }
-        offset = offset - getInstructionSize(lines[fromLine - 1]);
+        offset = offset - parser.getSize(getCleanCode(lines[fromLine - 1]));
         return offset;
     }
 
-    private int getInstructionSize(String line) {
-        line = line.trim();
-        if (line.isEmpty() || line.startsWith("//") || line.startsWith(";")) {
-            return 0;
-        }
-        if (line.startsWith("sub")) {
-            return 12;
-        }
-        if (line.startsWith("ld #") || line.startsWith("ld \"") || line.startsWith("moc #") || line.startsWith("push") || line.startsWith("pop")) {
-            return 8;
-        }
-        return 4;
-    }
-
     private void showByte() {
-        String code = getCleanCode(editor);
+        String code = getCleanCode(editor.getCode());
         byte[] bytecode;
         JDialog dialog = new JDialog(this, "Machine Code Viewer", false);
         dialog.setLayout(new BorderLayout());
@@ -378,6 +406,7 @@ public class GUIFrame extends JFrame {
             public void write(int b) {
                 console.appendWithoutFormatting(String.valueOf((char) b));
             }
+
             @Override
             public void write(byte[] b, int off, int len) {
                 String text = new String(b, off, len);

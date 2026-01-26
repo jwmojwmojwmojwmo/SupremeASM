@@ -29,6 +29,8 @@ Machine code: compiler will remove all whitespace when compiling, so any amount 
 ASM code: compiler will remove all whitespace in between instructions when compiling. Each instruction must be separated by ";", ex: ld #1, 1; ld #2, 0; Immediate values are given in base 10.
 
 In ASM, the "%" symbol can be used to denote a register. For example, "ld #3, 1; mov 1, 2;" is equal to "ld #3, %1; mov %1, %2". This is optional with general purpose registers, and required if using the special name of special purpose registers. (Ex. the stack pointer can be referenced as "%a" or "a" in ASM due to it being rA, but if using its special name "sp", it must be referenced as "%sp", not "sp")
+
+
 ## Register Rules
 
 
@@ -53,7 +55,8 @@ The stack grows downwards, and the stack pointer should initially point to the s
 
 ## Creating Libraries:
 
-You may create libraries that define your own instructions. As of current, the offset calculator **does not support custom instructions**. Here is an example of a library that defines an instruction that allows 3 chars to be stored to memory at once:
+You may create libraries that define your own instructions. Here is an example of a library that defines an instruction that allows 3 chars to be stored to memory at once:
+
 str.sasm:
 
 def str, a, b, c;
@@ -72,9 +75,19 @@ st 2, 1+#2;
 
 enddef;
 
-To use this library, use:
+See the given "str_lib.sasm" file for more examples. This library imports various functionalities to mimic strings.
+
+
+*IMPORTANT TO NOTE WHEN WORKING WITH LIBRARIES*
+
+To use a library, use:
 
 import str.sasm <- must be at the top of the program
+import str_lib.sasm <- subsequent imports must be defined together at the top of the program
+
+Then, call the function (ex: str a, b, c;)
+
+*IMPORTANT TO NOTE WHEN CREATING LIBRARIES*
 
 You must start a definition with "def", followed by the function's name. The name and all params are separated by commas.
 
@@ -85,6 +98,12 @@ You must end a definition with "enddef".
 Params are substituted into the function body when called. If str 1, 2, 3; was called, the compiler will change the body into ld "1", 2...ld "2", 2...etc.
 
 This means param names must be chosen very carefully. If there was a fourth param "d", this would fail to compile as the compiler would translate the "d" in ld into the given param.
+
+Number of params is currently static, however this will hopefully be changed in a coming update.
+
+Libraries are compiled differently than normal programs, so trying to run a .sasm library file by itself will fail to compile, even if it works when importing and calling a defined function.
+
+This effectively means that best practice when creating libraries is to create each function in its own save, compile those and verify it works, before then using it as the body of a defined function in a library.
 
 ## ISA:
 
@@ -106,7 +125,7 @@ This means param names must be chosen very carefully. If there was a fourth para
 | divide two register values, with the result being truncated to zero                                                                                                                                                       | r[r] / r[s] -> r[s]                                                                      | 28rs----                                                                                                                                                                                                  | div r, s                                                                                                             |
 | modulus two register values                                                                                                                                                                                               | r[r] % r[s] -> r[s]                                                                      | 29rs----                                                                                                                                                                                                  | mod r, s                                                                                                             |
 | indirect jump to another instruction (o is a signed 2 byte value)                                                                                                                                                         | pc + o -> pc                                                                             | a00-oooo                                                                                                                                                                                                  | jmp #o                                                                                                               |
-| if a register value is equal to zero, then indirect jump to another instruction (o is a signed 2 byte value)                                                                                                              | if r[r] == 0: pc + o -> pc                                                               | a1r-oooo                                                                                                                                                                                                  | ife r, #o                                                                                                            |
+| if a register value is equal to another, then indirect jump to another instruction (o is a signed 2 byte value)                                                                                                           | if r[r] == r[s]: pc + o -> pc                                                            | a1rsoooo                                                                                                                                                                                                  | ife r, s, #o                                                                                                         |
 | if a register value is greater than another, then indirect jump to another instruction (o is a signed 2 byte value)                                                                                                       | if r[r] > r[s]: pc + o -> pc                                                             | a2rsoooo                                                                                                                                                                                                  | igt r, s, #o                                                                                                         |
 | load the value of pc plus an offset to a register (o is a signed two byte value)                                                                                                                                          | pc + o -> r[r]                                                                           | a3r-oooo                                                                                                                                                                                                  | gpc r, #o                                                                                                            |
 | direct jump to a stored address                                                                                                                                                                                           | r[r] -> pc                                                                               | a4r-----                                                                                                                                                                                                  | goto r                                                                                                               |
@@ -143,11 +162,10 @@ This means param names must be chosen very carefully. If there was a fourth para
 01eeffff00000048 02eeffff00000065 03eeffff0000006c 04eeffff0000006f 05eeffff00000020 06eeffff00000057 07eeffff00000072 08eeffff00000064 09eeffff00000021 e301ffff e302ffff e303ffff e303ffff e304ffff e305ffff e306ffff e304ffff e307ffff e303ffff e308ffff e309ffff ffffffff
 
 ### Generate, print, and sum numbers 1-10 using a loop:
-01eeffff00000001 02eeffff0000000b 09eeffff0000000a 2013ffff 2403ffff 2103ffff 2323ffff a13f0005 e001ffff e309ffff 2314ffff 2101ffff a00ffff6 e004ffff ffffffff
+01eeffff00000001 02eeffff0000000b 09eeffff0000000a 08eeffff00000000 2013ffff 2403ffff 2103ffff 2323ffff a1380005 e001ffff e309ffff 2314ffff 2101ffff a00ffff6 e004ffff ffffffff
 
 ### Produce the nth Fibonacci Number:
-09eeffff0000006e 08eeffff00000020 01eeffff00000000 02eeffff00000001 e309ffff e308ffff f4ffffff 2008ffff a2280007 2208ffff a18f0007 2023ffff 2312ffff 2031ffff 2208ffff a000fffa e001ffff ffffffff e002ffff ffffffff
-
+09eeffff0000006e 08eeffff00000020 01eeffff00000000 02eeffff00000001 07eeffff00000000 e309ffff e308ffff f4ffffff 2008ffff a2280007 2208ffff a1870007 2023ffff 2312ffff 2031ffff 2208ffff a000fffa e001ffff ffffffff e002ffff ffffffff
 ## ASM Examples:
 
 ### Print "Hello World!": 
@@ -157,7 +175,7 @@ ld #72, 1; ld #101, 2; ld #108, 3; ld #111, 4; ld #32, 5; ld #87, 6; ld #114, 7;
 ld #1, %1; ld #11, %2; ld #10, %9; mov %1, %3; sub %2, %3; ife %3, #5; prt %1; prf %9; add %1, %4; inc %1; jmp #-10; prt %4; halt;
 
 ### Produce the nth Fibonacci Number using a loop:
-ld #110, 9; ld #32, 8; ld #0, 1; ld #1, 2; prf 9; prf 8; inp; mov 0, 8; igt 2, 8, #7; dec 8; ife 8, #7; mov 2, 3; add 1, 2; mov 3, 1; dec 8; jmp #-6; prt 1; halt; prt 2; halt;
+ld #110, 9; ld #32, 8; ld #0, 1; ld #1, 2; ld #0, 7; prf 9; prf 8; inp; mov 0, 8; igt 2, 8, #7; dec 8; ife 8, 7, #7; mov 2, 3; add 1, 2; mov 3, 1; dec 8; jmp #-6; prt 1; halt; prt 2; halt;
 
 ### Calculate n! recursively, using the stack for function calls (note this only works up to 12! due to integer overflow):
 moc #1024; mov 0, a; initsp; ld #110, 1; ld #32, 2; prf 1; prf 2; inp; mov 0, 1; push 1; gpc 6, #1; jmp #4; prt 9; pop 0; halt; push 6; ld a+#-1, 2; ld #2, 1; igt 1, 2, #10; dec 2; push 2; gpc 6, #1; jmp #-11; pop 0; ld a+#-1, 2; mul 2, 9; jmp #2; ld #1, 9; pop 6; goto 6;

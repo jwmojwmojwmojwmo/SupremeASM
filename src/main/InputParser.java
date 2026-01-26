@@ -22,9 +22,9 @@ public class InputParser {
         }
     }
 
-    public ArrayList<Library> getLibraries(String input) throws BadCodeException {
-        parseAssembly(input);
-        return libs;
+    public int getSize(String line) throws BadCodeException {
+        String machineCode = parseAssembly(line);
+        return machineCode.length() / 2;
     }
 
     // returns CPU readable instructions from machine code
@@ -55,6 +55,7 @@ public class InputParser {
                 System.out.println("File at line @" + (i + 1) + " was not found!");
                 throw new BadCodeException();
             } catch (Exception e) {
+                e.printStackTrace();
                 throw new BadCodeException(i + 1);
             }
         }
@@ -100,11 +101,13 @@ public class InputParser {
                         case 'r' -> '\r'; // Carriage Return
                         case '0' -> '\0'; // Null
                         case '\\' -> '\\'; // Backslash
+                        case 's' -> ' ';
                         default -> insParts[1].charAt(2);
                     };
                 }
                 insParts[1] = " " + (int) c;
             }
+
             instruction = "0" + insParts[2] + "eeffff" + String.format("%08x", Integer.decode(insParts[1].substring(1)));
         }
         return instruction;
@@ -165,13 +168,13 @@ public class InputParser {
         String instruction = switch (insParts[0]) {
             case "jmp" -> "a00f" + String.format("%04x", Integer.decode(insParts[1].substring(1)) & 0xFFFF);
             case "ife" ->
-                    "a1" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
+                    "a1" + insParts[1] + insParts[2] + String.format("%04x", Integer.decode(insParts[3].substring(1)) & 0xFFFF);
             case "igt" ->
                     "a2" + insParts[1] + insParts[2] + String.format("%04x", Integer.decode(insParts[3].substring(1)) & 0xFFFF);
             case "gpc" ->
                     "a3" + insParts[1] + "f" + String.format("%04x", Integer.decode(insParts[2].substring(1)) & 0xFFFF);
             case "goto" -> "a4" + insParts[1] + "fffff";
-            default -> throw new BadCodeException();
+            default -> "hi";
         };
         return instruction;
     }
@@ -233,7 +236,7 @@ public class InputParser {
                 return parseAssembly(lib.call(insParts));
             }
         }
-        throw new ArrayIndexOutOfBoundsException();
+        throw new BadCodeException();
     }
 
     private String getCleanCode(String code) {

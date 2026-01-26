@@ -54,6 +54,7 @@ public class Library {
         return functions.containsKey(funcName);
     }
 
+    // TODO: allow functions to have dynamic params
     private HashMap<String, Integer> getDefinedFunctions() throws IOException {
         // defined functions need to be:
         // def function, 1, 2, 3, 4

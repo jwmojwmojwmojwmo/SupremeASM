@@ -2,8 +2,8 @@
 moc #1024; // malloc space for sp
 mov %0, %sp; // set sp to top of malloced memory
 initsp; // sets bounds
-ld #110, %1; // ascii code for "n"
-ld #32, %2; // ascii code for " "
+ld "n", %1; // loads ascii code for "n"
+ld "\s", %2; // loads ascii code for " "
 prf %1; // prints "n"
 prf %2; // prints " "
 inp; // waits for user input
@@ -31,13 +31,13 @@ pop %6; // pops return address off stack
 goto %6; // jumps back to return address
 
 // this program translated to pseudocode is approximately speaking: 
-// main() { 
+// void main() {
 //	print("n "); 
 //	int n = userInput.nextLine();
 //	print(factorial(n));
 // }
 //
-// factorial(int n) {
+// int factorial(int n) {
 //	if (n < 2) {
 //		return 1;
 //	else {

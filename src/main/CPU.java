@@ -115,7 +115,7 @@ public class CPU {
                     return indirectJump((short) insImm);
                 }
                 if (insNum0 == 1) {
-                    return ifEqualIndirectJump((short) insImm, insNum1);
+                    return ifEqualIndirectJump((short) insImm, insNum1, insNum2);
                 }
                 if (insNum0 == 2) {
                     return ifGreaterIndirectJump((short) insImm, insNum1, insNum2);
@@ -282,9 +282,9 @@ public class CPU {
         return pc.write(pc.read() + offset);
     }
 
-    // j $o if reg == 0
-    private int ifEqualIndirectJump(short offset, int register) {
-        if (regs[register].read() == 0) {
+    // j $o if reg1 == reg2
+    private int ifEqualIndirectJump(short offset, int reg1, int reg2) {
+        if (regs[reg1].read() == regs[reg2].read()) {
             return pc.write(pc.read() + offset);
         }
         return 1;
